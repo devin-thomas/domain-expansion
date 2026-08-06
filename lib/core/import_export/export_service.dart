@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:domain_expansion/core/database/app_database.dart';
 import 'package:domain_expansion/core/import_export/canonical_export.dart';
@@ -19,11 +20,16 @@ class ImportDocument {
   final Map<String, dynamic> snapshot;
 }
 
+class ImportCancelledException implements Exception {
+  const ImportCancelledException();
+}
+
 class ExportService {
   Future<String> exportAndShare(
     AppDatabase database,
-    ExportFormat format,
-  ) async {
+    ExportFormat format, {
+    Rect? sharePositionOrigin,
+  }) async {
     final directory = await getTemporaryDirectory();
     final extension = format == ExportFormat.sqlite
         ? 'sqlite'
@@ -46,20 +52,34 @@ class ExportService {
       final canonical = CanonicalExport.fromJson(
         Map<String, dynamic>.from(snapshot),
       );
-      // JSON is also a valid YAML 1.2 document, keeping both exports lossless
-      // without introducing a serializer that can silently drop null fields.
-      final contents = format == ExportFormat.yaml
-          ? _yaml(canonical.toJson())
-          : const JsonEncoder.withIndent('  ').convert(canonical.toJson());
+      final contents = encodeCanonicalText(canonical, format);
       await file.writeAsString(contents);
     }
     await SharePlus.instance.share(
       ShareParams(
         files: [XFile(file.path)],
         subject: 'Domain Expansion export',
+        // iPad presents the share sheet from this rect. A non-zero fallback
+        // keeps exports safe for callers that do not have a widget context.
+        sharePositionOrigin: _validShareOrigin(sharePositionOrigin),
       ),
     );
     return file.path;
+  }
+
+  String encodeCanonicalText(CanonicalExport canonical, ExportFormat format) {
+    final json = canonical.toJson();
+    // JSON is also valid YAML 1.2, but the readable YAML form keeps the
+    // document approachable without dropping null fields.
+    if (format == ExportFormat.yaml) return _yaml(json);
+    if (format == ExportFormat.json) {
+      return const JsonEncoder.withIndent('  ').convert(json);
+    }
+    throw ArgumentError.value(
+      format,
+      'format',
+      'Only JSON and YAML formats have text representations.',
+    );
   }
 
   Future<ImportDocument> pickImport() async {
@@ -69,7 +89,7 @@ class ExportService {
       withData: true,
     );
     if (result == null || result.files.isEmpty) {
-      throw const FormatException('No import file was selected.');
+      throw const ImportCancelledException();
     }
     final picked = result.files.single;
     final extension = p.extension(picked.name).toLowerCase();
@@ -94,6 +114,11 @@ class ExportService {
     if (extension == '.xlsx') {
       return ImportDocument(name: picked.name, snapshot: _fromWorkbook(bytes));
     }
+    return parseImportBytes(picked.name, bytes);
+  }
+
+  ImportDocument parseImportBytes(String name, List<int> bytes) {
+    final extension = p.extension(name).toLowerCase();
     final text = utf8.decode(bytes);
     final decoded = extension == '.yaml' || extension == '.yml'
         ? loadYaml(text)
@@ -104,11 +129,18 @@ class ExportService {
       );
     }
     return ImportDocument(
-      name: picked.name,
+      name: name,
       snapshot: CanonicalExport.fromJson(
         Map<String, dynamic>.from(_jsonValue(decoded) as Map),
       ).toJson(),
     );
+  }
+
+  Rect _validShareOrigin(Rect? origin) {
+    if (origin != null && origin.width > 0 && origin.height > 0) {
+      return origin;
+    }
+    return const Rect.fromLTWH(0, 0, 1, 1);
   }
 
   Excel _toWorkbook(Map<String, dynamic> snapshot) {

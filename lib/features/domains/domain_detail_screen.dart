@@ -1,3 +1,4 @@
+import 'package:domain_expansion/app/edge_swipe_back.dart';
 import 'package:domain_expansion/core/formatting/formatters.dart';
 import 'package:domain_expansion/core/models/domain_record.dart';
 import 'package:domain_expansion/core/providers/providers.dart';
@@ -13,204 +14,216 @@ class DomainDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final domain = ref.watch(domainProvider(domainId));
     final reminders = ref.watch(remindersProvider(domainId));
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => context.go('/domains'),
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back to domains',
-        ),
-        title: const Text('Domain'),
-        actions: [
-          IconButton(
-            onPressed: () => context.go('/domains/$domainId/edit'),
-            icon: const Icon(Icons.edit),
-            tooltip: 'Edit domain',
+    void goBack() {
+      FocusManager.instance.primaryFocus?.unfocus();
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/domains');
+      }
+    }
+
+    return EdgeSwipeBack(
+      onBack: goBack,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: goBack,
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Back to domains',
           ),
-        ],
-      ),
-      body: domain.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) =>
-            Center(child: Text('Could not load domain: $error')),
-        data: (value) {
-          if (value == null) {
-            return const Center(child: Text('Domain not found.'));
-          }
-          return ListView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          value.name,
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        if (value.isArchived)
-                          const Text(
-                            'Archived',
-                            style: TextStyle(fontWeight: FontWeight.w600),
+          title: const Text('Domain'),
+          actions: [
+            IconButton(
+              onPressed: () => context.push('/domains/$domainId/edit'),
+              icon: const Icon(Icons.edit),
+              tooltip: 'Edit domain',
+            ),
+          ],
+        ),
+        body: domain.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) =>
+              Center(child: Text('Could not load domain: $error')),
+          data: (value) {
+            if (value == null) {
+              return const Center(child: Text('Domain not found.'));
+            }
+            return ListView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            value.name,
+                            style: Theme.of(context).textTheme.headlineMedium,
                           ),
-                      ],
+                          if (value.isArchived)
+                            const Text(
+                              'Archived',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () => _duplicate(context, ref, value),
-                    icon: const Icon(Icons.content_copy),
-                    tooltip: 'Duplicate domain',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _InfoCard(
-                title: 'Status',
-                children: [
-                  _field('Ownership', _label(value.ownershipType.name)),
-                  _field('Lifecycle', _label(value.lifecycleState.name)),
-                  _field(
-                    'Renewal intent',
-                    value.renewalIntent == RenewalIntent.renew
-                        ? 'Renew'
-                        : 'Let expire',
-                  ),
-                ],
-              ),
-              _InfoCard(
-                title: 'Dates',
-                children: [
-                  _field('Billing date', formatDate(value.billingDate)),
-                  _field(
-                    'Effective billing',
-                    formatDate(value.effectiveBillingDate),
-                  ),
-                  _field('Expiration date', formatDate(value.expirationDate)),
-                  _field(
-                    'Effective expiration',
-                    formatDate(value.effectiveExpirationDate),
-                  ),
-                  _field(
-                    'Registration date',
-                    formatDate(value.registrationDate),
-                  ),
-                ],
-              ),
-              _InfoCard(
-                title: 'Costs and providers',
-                children: [
-                  _field('Currency', value.currency.code),
-                  _field(
-                    'Registration cost',
-                    formatMoney(value.registrationCostMinor, value.currency),
-                  ),
-                  _field(
-                    'Renewal cost',
-                    formatMoney(value.renewalCostMinor, value.currency),
-                  ),
-                  _field('Registrar', value.registrar ?? '—'),
-                  _field('DNS provider', value.dnsProvider ?? '—'),
-                ],
-              ),
-              _InfoCard(
-                title: 'Reminders',
-                children: [
-                  reminders.when(
-                    loading: () => const ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('Loading reminders...'),
+                    IconButton(
+                      onPressed: () => _duplicate(context, ref, value),
+                      icon: const Icon(Icons.content_copy),
+                      tooltip: 'Duplicate domain',
                     ),
-                    error: (error, _) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('Could not load reminders: $error'),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _InfoCard(
+                  title: 'Status',
+                  children: [
+                    _field('Ownership', _label(value.ownershipType.name)),
+                    _field('Lifecycle', _label(value.lifecycleState.name)),
+                    _field(
+                      'Renewal intent',
+                      value.renewalIntent == RenewalIntent.renew
+                          ? 'Renew'
+                          : 'Let expire',
                     ),
-                    data: (items) => items.isEmpty
-                        ? const ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text('No reminders configured.'),
-                          )
-                        : Column(
-                            children: items
-                                .map(
-                                  (reminder) => ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(
-                                      '${reminder.daysBefore} days before',
-                                    ),
-                                    subtitle: Text(
-                                      reminder.targetType == 'default'
-                                          ? 'Follows renewal intent'
-                                          : _label(reminder.targetType),
-                                    ),
-                                    leading: Switch(
-                                      value: reminder.isEnabled,
-                                      onChanged: (enabled) => _toggleReminder(
-                                        context,
-                                        ref,
-                                        value,
-                                        reminder,
-                                        enabled,
+                  ],
+                ),
+                _InfoCard(
+                  title: 'Dates',
+                  children: [
+                    _field('Billing date', formatDate(value.billingDate)),
+                    _field(
+                      'Effective billing',
+                      formatDate(value.effectiveBillingDate),
+                    ),
+                    _field('Expiration date', formatDate(value.expirationDate)),
+                    _field(
+                      'Effective expiration',
+                      formatDate(value.effectiveExpirationDate),
+                    ),
+                    _field(
+                      'Registration date',
+                      formatDate(value.registrationDate),
+                    ),
+                  ],
+                ),
+                _InfoCard(
+                  title: 'Costs and providers',
+                  children: [
+                    _field('Currency', value.currency.code),
+                    _field(
+                      'Registration cost',
+                      formatMoney(value.registrationCostMinor, value.currency),
+                    ),
+                    _field(
+                      'Renewal cost',
+                      formatMoney(value.renewalCostMinor, value.currency),
+                    ),
+                    _field('Registrar', value.registrar ?? '—'),
+                    _field('DNS provider', value.dnsProvider ?? '—'),
+                  ],
+                ),
+                _InfoCard(
+                  title: 'Reminders',
+                  children: [
+                    reminders.when(
+                      loading: () => const ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('Loading reminders...'),
+                      ),
+                      error: (error, _) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('Could not load reminders: $error'),
+                      ),
+                      data: (items) => items.isEmpty
+                          ? const ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text('No reminders configured.'),
+                            )
+                          : Column(
+                              children: items
+                                  .map(
+                                    (reminder) => ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: Text(
+                                        '${reminder.daysBefore} days before',
+                                      ),
+                                      subtitle: Text(
+                                        reminder.targetType == 'default'
+                                            ? 'Follows renewal intent'
+                                            : _label(reminder.targetType),
+                                      ),
+                                      leading: Switch(
+                                        value: reminder.isEnabled,
+                                        onChanged: (enabled) => _toggleReminder(
+                                          context,
+                                          ref,
+                                          value,
+                                          reminder,
+                                          enabled,
+                                        ),
+                                      ),
+                                      trailing: DropdownButton<String>(
+                                        value: reminder.targetType,
+                                        underline: const SizedBox.shrink(),
+                                        items: const [
+                                          DropdownMenuItem(
+                                            value: 'default',
+                                            child: Text('Default'),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 'billing',
+                                            child: Text('Billing'),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: 'expiration',
+                                            child: Text('Expiration'),
+                                          ),
+                                        ],
+                                        onChanged: (target) {
+                                          if (target != null) {
+                                            _changeReminderTarget(
+                                              context,
+                                              ref,
+                                              value,
+                                              reminder,
+                                              target,
+                                            );
+                                          }
+                                        },
                                       ),
                                     ),
-                                    trailing: DropdownButton<String>(
-                                      value: reminder.targetType,
-                                      underline: const SizedBox.shrink(),
-                                      items: const [
-                                        DropdownMenuItem(
-                                          value: 'default',
-                                          child: Text('Default'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'billing',
-                                          child: Text('Billing'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'expiration',
-                                          child: Text('Expiration'),
-                                        ),
-                                      ],
-                                      onChanged: (target) {
-                                        if (target != null) {
-                                          _changeReminderTarget(
-                                            context,
-                                            ref,
-                                            value,
-                                            reminder,
-                                            target,
-                                          );
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                  ),
-                ],
-              ),
-              if ((value.notes ?? '').isNotEmpty)
-                _InfoCard(title: 'Notes', children: [Text(value.notes!)]),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () => _toggleArchive(context, ref, value),
-                icon: Icon(
-                  value.isArchived ? Icons.unarchive : Icons.archive_outlined,
+                                  )
+                                  .toList(),
+                            ),
+                    ),
+                  ],
                 ),
-                label: Text(value.isArchived ? 'Unarchive' : 'Archive'),
-              ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: () => _delete(context, ref, value),
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('Delete domain'),
-              ),
-            ],
-          );
-        },
+                if ((value.notes ?? '').isNotEmpty)
+                  _InfoCard(title: 'Notes', children: [Text(value.notes!)]),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => _toggleArchive(context, ref, value),
+                  icon: Icon(
+                    value.isArchived ? Icons.unarchive : Icons.archive_outlined,
+                  ),
+                  label: Text(value.isArchived ? 'Unarchive' : 'Archive'),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => _delete(context, ref, value),
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Delete domain'),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -304,7 +317,7 @@ class DomainDetailScreen extends ConsumerWidget {
     try {
       final id = await ref.read(databaseProvider).duplicateDomain(domain);
       invalidateDomainData(ref, id);
-      if (context.mounted) context.go('/domains/$id/edit');
+      if (context.mounted) context.push('/domains/$id/edit');
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

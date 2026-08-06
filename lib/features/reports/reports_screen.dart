@@ -23,7 +23,7 @@ class ReportsScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
             children: [
               if (visible.isEmpty)
-                _ReportsEmptyState(onAdd: () => context.go('/domains/new'))
+                _ReportsEmptyState(onAdd: () => context.push('/domains/new'))
               else ...[
                 Text(
                   'Expected renewal cost',

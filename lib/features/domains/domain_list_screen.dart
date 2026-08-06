@@ -72,7 +72,7 @@ class DomainListScreen extends ConsumerWidget {
                 data: (items) => items.isEmpty
                     ? _EmptyState(
                         hasFilters: _filterCount(ref) > 0,
-                        onAdd: () => context.go('/domains/new'),
+                        onAdd: () => context.push('/domains/new'),
                         onClear: () => resetDomainFilters(ref),
                       )
                     : RefreshIndicator(
@@ -93,7 +93,7 @@ class DomainListScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/domains/new'),
+        onPressed: () => context.push('/domains/new'),
         icon: const Icon(Icons.add),
         label: const Text('Add domain'),
       ),
@@ -376,7 +376,7 @@ class _DomainTile extends StatelessWidget {
             style: Theme.of(context).textTheme.titleSmall,
           ),
         ),
-        onTap: () => context.go('/domains/${domain.id}'),
+        onTap: () => context.push('/domains/${domain.id}'),
       ),
     );
   }

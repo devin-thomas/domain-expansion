@@ -3,6 +3,7 @@ import 'package:domain_expansion/core/import_export/export_service.dart';
 import 'package:domain_expansion/core/models/domain_record.dart';
 import 'package:domain_expansion/core/providers/providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -354,11 +355,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (_backupBusy) return;
     setState(() => _backupBusy = true);
     try {
-      await _exportService.exportAndShare(ref.read(databaseProvider), format);
-    } catch (error) {
+      final size = MediaQuery.sizeOf(context);
+      await _exportService.exportAndShare(
+        ref.read(databaseProvider),
+        format,
+        sharePositionOrigin: Rect.fromLTWH(0, 0, size.width, size.height),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Backup export failed: $error\n$stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not export backup: $error')),
+          SnackBar(content: Text(_backupErrorMessage(error, importing: false))),
         );
       }
     } finally {
@@ -420,16 +427,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         );
       }
-    } catch (error) {
+    } on ImportCancelledException {
+      return;
+    } catch (error, stackTrace) {
+      debugPrint('Backup import failed: $error\n$stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Import failed. No changes were applied: $error'),
-          ),
+          SnackBar(content: Text(_backupErrorMessage(error, importing: true))),
         );
       }
     } finally {
       if (mounted) setState(() => _backupBusy = false);
     }
+  }
+
+  String _backupErrorMessage(Object error, {required bool importing}) {
+    if (error is FormatException) {
+      return importing
+          ? 'This file is not a valid Domain Expansion backup.'
+          : 'Could not prepare the backup. Please try again.';
+    }
+    if (error is PlatformException &&
+        (error.message?.contains('sharePositionOrigin') ?? false)) {
+      return 'Could not open the share sheet. Please try again.';
+    }
+    return importing
+        ? 'Could not import the backup. No changes were applied.'
+        : 'Could not export the backup. Please try again.';
   }
 }

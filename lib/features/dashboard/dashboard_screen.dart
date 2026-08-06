@@ -71,7 +71,7 @@ class DashboardScreen extends ConsumerWidget {
                         const Text('Nothing is scheduled yet.'),
                         const SizedBox(height: 10),
                         OutlinedButton.icon(
-                          onPressed: () => context.go('/domains/new'),
+                          onPressed: () => context.push('/domains/new'),
                           icon: const Icon(Icons.add),
                           label: const Text('Add a domain'),
                         ),
@@ -97,7 +97,7 @@ class DashboardScreen extends ConsumerWidget {
                                   )
                                 : 'Let expire',
                           ),
-                          onTap: () => context.go('/domains/${domain.id}'),
+                          onTap: () => context.push('/domains/${domain.id}'),
                         ),
                       ),
                     ),
@@ -106,7 +106,7 @@ class DashboardScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/domains/new'),
+        onPressed: () => context.push('/domains/new'),
         icon: const Icon(Icons.add),
         label: const Text('Add domain'),
       ),
