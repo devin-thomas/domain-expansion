@@ -192,7 +192,7 @@ class AppDatabase {
     int domainId,
     DateTime createdAt,
   ) async {
-    final offsets = await getDefaultReminderOffsets();
+    final offsets = await getDefaultReminderOffsets(executor: txn);
     final now = createdAt.toIso8601String();
     for (final offset in offsets) {
       await txn.insert('reminders', {
@@ -333,8 +333,11 @@ class AppDatabase {
     };
   }
 
-  Future<String?> getMetadataValue(String key) async {
-    final rows = await db.query(
+  Future<String?> getMetadataValue(
+    String key, {
+    DatabaseExecutor? executor,
+  }) async {
+    final rows = await (executor ?? db).query(
       'app_metadata',
       columns: ['value'],
       where: 'key = ?',
@@ -351,9 +354,15 @@ class AppDatabase {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<List<int>> getDefaultReminderOffsets() async {
+  Future<List<int>> getDefaultReminderOffsets({
+    DatabaseExecutor? executor,
+  }) async {
     final raw =
-        await getMetadataValue('default_reminder_offsets') ?? '30,14,7,1';
+        await getMetadataValue(
+          'default_reminder_offsets',
+          executor: executor,
+        ) ??
+        '30,14,7,1';
     final offsets =
         raw
             .split(',')
