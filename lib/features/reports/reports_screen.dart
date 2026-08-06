@@ -22,46 +22,54 @@ class ReportsScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
             children: [
-              Text(
-                'Expected renewal cost',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              _CostWindow(title: 'Next 30 days', domains: visible, days: 30),
-              _CostWindow(title: 'Next 90 days', domains: visible, days: 90),
-              _CostWindow(title: 'Next 12 months', domains: visible, days: 365),
-              const SizedBox(height: 20),
-              _SummaryCard(
-                title: 'Annualized renewal cost',
-                values: _currencyTotals(
-                  visible,
-                  now: DateTime.now(),
-                  includeDate: false,
+              if (visible.isEmpty)
+                _ReportsEmptyState(onAdd: () => context.go('/domains/new'))
+              else ...[
+                Text(
+                  'Expected renewal cost',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-              ),
-              _RegistrarCard(domains: visible),
-              _CountCard(
-                title: 'Lifecycle',
-                values: _counts(
-                  visible.map((domain) => domain.lifecycleState.name),
+                const SizedBox(height: 8),
+                _CostWindow(title: 'Next 30 days', domains: visible, days: 30),
+                _CostWindow(title: 'Next 90 days', domains: visible, days: 90),
+                _CostWindow(
+                  title: 'Next 12 months',
+                  domains: visible,
+                  days: 365,
                 ),
-              ),
-              _CountCard(
-                title: 'Ownership',
-                values: _counts(
-                  visible.map((domain) => domain.ownershipType.name),
-                ),
-              ),
-              _CountCard(
-                title: 'Renewal intent',
-                values: _counts(
-                  visible.map(
-                    (domain) => domain.renewalIntent == RenewalIntent.renew
-                        ? 'renew'
-                        : 'let expire',
+                const SizedBox(height: 20),
+                _SummaryCard(
+                  title: 'Annualized renewal cost',
+                  values: _currencyTotals(
+                    visible,
+                    now: DateTime.now(),
+                    includeDate: false,
                   ),
                 ),
-              ),
+                _RegistrarCard(domains: visible),
+                _CountCard(
+                  title: 'Lifecycle',
+                  values: _counts(
+                    visible.map((domain) => domain.lifecycleState.name),
+                  ),
+                ),
+                _CountCard(
+                  title: 'Ownership',
+                  values: _counts(
+                    visible.map((domain) => domain.ownershipType.name),
+                  ),
+                ),
+                _CountCard(
+                  title: 'Renewal intent',
+                  values: _counts(
+                    visible.map(
+                      (domain) => domain.renewalIntent == RenewalIntent.renew
+                          ? 'renew'
+                          : 'let expire',
+                    ),
+                  ),
+                ),
+              ],
             ],
           );
         },
@@ -88,6 +96,43 @@ class ReportsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _ReportsEmptyState extends StatelessWidget {
+  const _ReportsEmptyState({required this.onAdd});
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.analytics_outlined,
+            size: 40,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Your reports will appear here.',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Add a domain with a billing or expiration date to start tracking your portfolio.',
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add),
+            label: const Text('Add a domain'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 Map<CurrencyCode, int> _currencyTotals(

@@ -15,6 +15,11 @@ class DomainDetailScreen extends ConsumerWidget {
     final reminders = ref.watch(remindersProvider(domainId));
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => context.go('/domains'),
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back to domains',
+        ),
         title: const Text('Domain'),
         actions: [
           IconButton(
@@ -33,6 +38,7 @@ class DomainDetailScreen extends ConsumerWidget {
             return const Center(child: Text('Domain not found.'));
           }
           return ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             children: [
               Row(
@@ -143,6 +149,7 @@ class DomainDetailScreen extends ConsumerWidget {
                                     leading: Switch(
                                       value: reminder.isEnabled,
                                       onChanged: (enabled) => _toggleReminder(
+                                        context,
                                         ref,
                                         value,
                                         reminder,
@@ -169,6 +176,7 @@ class DomainDetailScreen extends ConsumerWidget {
                                       onChanged: (target) {
                                         if (target != null) {
                                           _changeReminderTarget(
+                                            context,
                                             ref,
                                             value,
                                             reminder,
@@ -208,21 +216,31 @@ class DomainDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _toggleReminder(
+    BuildContext context,
     WidgetRef ref,
     DomainRecord domain,
     ReminderRecord reminder,
     bool enabled,
   ) async {
     if (reminder.id == null) return;
-    final database = ref.read(databaseProvider);
-    await database.setReminderEnabled(reminder.id!, enabled);
-    await ref
-        .read(reminderServiceProvider)
-        .rescheduleDomain(domain, await database.getReminders(domainId));
-    ref.invalidate(remindersProvider(domainId));
+    try {
+      final database = ref.read(databaseProvider);
+      await database.setReminderEnabled(reminder.id!, enabled);
+      await ref
+          .read(reminderServiceProvider)
+          .rescheduleDomain(domain, await database.getReminders(domainId));
+      ref.invalidate(remindersProvider(domainId));
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update reminder: $error')),
+        );
+      }
+    }
   }
 
   Future<void> _changeReminderTarget(
+    BuildContext context,
     WidgetRef ref,
     DomainRecord domain,
     ReminderRecord reminder,
@@ -238,12 +256,20 @@ class DomainDetailScreen extends ConsumerWidget {
       createdAt: reminder.createdAt,
       updatedAt: DateTime.now(),
     );
-    final database = ref.read(databaseProvider);
-    await database.saveReminder(updated);
-    await ref
-        .read(reminderServiceProvider)
-        .rescheduleDomain(domain, await database.getReminders(domainId));
-    ref.invalidate(remindersProvider(domainId));
+    try {
+      final database = ref.read(databaseProvider);
+      await database.saveReminder(updated);
+      await ref
+          .read(reminderServiceProvider)
+          .rescheduleDomain(domain, await database.getReminders(domainId));
+      ref.invalidate(remindersProvider(domainId));
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update reminder: $error')),
+        );
+      }
+    }
   }
 
   Future<void> _toggleArchive(
@@ -251,15 +277,23 @@ class DomainDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     DomainRecord domain,
   ) async {
-    final database = ref.read(databaseProvider);
-    await database.setArchived(domainId, !domain.isArchived);
-    final updated = await database.getDomain(domainId);
-    if (updated != null) {
-      await ref
-          .read(reminderServiceProvider)
-          .rescheduleDomain(updated, await database.getReminders(domainId));
+    try {
+      final database = ref.read(databaseProvider);
+      await database.setArchived(domainId, !domain.isArchived);
+      final updated = await database.getDomain(domainId);
+      if (updated != null) {
+        await ref
+            .read(reminderServiceProvider)
+            .rescheduleDomain(updated, await database.getReminders(domainId));
+      }
+      invalidateDomainData(ref, domainId);
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update archive state: $error')),
+        );
+      }
     }
-    invalidateDomainData(ref, domainId);
   }
 
   Future<void> _duplicate(
@@ -303,14 +337,22 @@ class DomainDetailScreen extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-    final database = ref.read(databaseProvider);
-    final reminders = await database.getReminders(domainId);
-    await ref
-        .read(reminderServiceProvider)
-        .cancelDomain(domainId, reminders: reminders);
-    await database.deleteDomain(domainId);
-    invalidateDomainData(ref);
-    if (context.mounted) context.go('/domains');
+    try {
+      final database = ref.read(databaseProvider);
+      final reminders = await database.getReminders(domainId);
+      await ref
+          .read(reminderServiceProvider)
+          .cancelDomain(domainId, reminders: reminders);
+      await database.deleteDomain(domainId);
+      invalidateDomainData(ref);
+      if (context.mounted) context.go('/domains');
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete domain: $error')),
+        );
+      }
+    }
   }
 
   Widget _field(String label, String value) => Padding(

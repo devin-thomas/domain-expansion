@@ -22,66 +22,75 @@ class DomainListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: TextField(
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
-                hintText: 'Search domains, registrars, or DNS',
-                suffixIcon: ref.watch(searchQueryProvider).isEmpty
-                    ? null
-                    : IconButton(
-                        onPressed: () =>
-                            ref.read(searchQueryProvider.notifier).state = '',
-                        icon: const Icon(Icons.clear),
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: TextField(
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Search domains, registrars, or DNS',
+                  suffixIcon: ref.watch(searchQueryProvider).isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () =>
+                              ref.read(searchQueryProvider.notifier).state = '',
+                          icon: const Icon(Icons.clear),
+                        ),
+                ),
+                textInputAction: TextInputAction.search,
+                onChanged: (value) =>
+                    ref.read(searchQueryProvider.notifier).state = value,
+                onSubmitted: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
+              ),
+            ),
+            if (_filterCount(ref) > 0)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 5,
+                  ),
+                  child: Text(
+                    '${_filterCount(ref)} ${_filterCount(ref) == 1 ? 'filter' : 'filters'} active',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ),
+              ),
+            Expanded(
+              child: domains.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => _ErrorState(
+                  message: 'Could not load domains: $error',
+                  onRetry: () => ref.invalidate(domainsProvider),
+                ),
+                data: (items) => items.isEmpty
+                    ? _EmptyState(
+                        hasFilters: _filterCount(ref) > 0,
+                        onAdd: () => context.go('/domains/new'),
+                        onClear: () => resetDomainFilters(ref),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: () => ref.refresh(domainsProvider.future),
+                        child: ListView.separated(
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
+                          itemCount: items.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 6),
+                          itemBuilder: (context, index) =>
+                              _DomainTile(domain: items[index]),
+                        ),
                       ),
               ),
-              onChanged: (value) =>
-                  ref.read(searchQueryProvider.notifier).state = value,
             ),
-          ),
-          if (_filterCount(ref) > 0)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 5,
-                ),
-                child: Text(
-                  '${_filterCount(ref)} filters active',
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-              ),
-            ),
-          Expanded(
-            child: domains.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => _ErrorState(
-                message: 'Could not load domains: $error',
-                onRetry: () => ref.invalidate(domainsProvider),
-              ),
-              data: (items) => items.isEmpty
-                  ? _EmptyState(
-                      hasFilters: _filterCount(ref) > 0,
-                      onAdd: () => context.go('/domains/new'),
-                      onClear: () => resetDomainFilters(ref),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: () => ref.refresh(domainsProvider.future),
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
-                        itemCount: items.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 6),
-                        itemBuilder: (context, index) =>
-                            _DomainTile(domain: items[index]),
-                      ),
-                    ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.go('/domains/new'),
@@ -119,7 +128,12 @@ class DomainListScreen extends ConsumerWidget {
       isScrollControlled: true,
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            12,
+            16,
+            24 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
           child: ListView(
             shrinkWrap: true,
             children: [
@@ -342,15 +356,25 @@ class _DomainTile extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         title: Text(
           domain.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
-          '${domain.registrar ?? 'No registrar'}  •  ${formatDate(date)}\n${_label(domain.ownershipType.name)}  •  ${_label(domain.lifecycleState.name)}  •  ${domain.renewalIntent == RenewalIntent.renew ? 'Renews' : 'Let expire'}',
+          '${domain.registrar ?? 'No registrar'}  •  ${formatDate(date)}\n${_label(domain.ownershipType.name)}  •  ${_label(domain.lifecycleState.name)}  •  ${domain.renewalIntent == RenewalIntent.renew ? 'Renews' : 'Let expire'}${domain.isArchived ? '  •  Archived' : ''}',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         isThreeLine: true,
-        trailing: Text(
-          formatMoney(domain.renewalCostMinor, domain.currency),
-          style: Theme.of(context).textTheme.titleSmall,
+        trailing: SizedBox(
+          width: 72,
+          child: Text(
+            formatMoney(domain.renewalCostMinor, domain.currency),
+            textAlign: TextAlign.end,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
         ),
         onTap: () => context.go('/domains/${domain.id}'),
       ),

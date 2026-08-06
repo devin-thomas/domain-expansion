@@ -35,8 +35,7 @@ class DashboardScreen extends ConsumerWidget {
               .toList();
           final nextPayment = nextPaymentFor(active);
           final totals = nextTwelveMonthTotals(active);
-          final upcoming = [...active]
-            ..sort((a, b) => _relevantDate(a).compareTo(_relevantDate(b)));
+          final upcoming = upcomingDomainsFor(active);
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
             children: [
@@ -139,11 +138,23 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-DateTime _relevantDate(DomainRecord domain) =>
-    (domain.renewalIntent == RenewalIntent.renew
-        ? domain.effectiveBillingDate
-        : domain.effectiveExpirationDate) ??
-    DateTime(9999);
+List<DomainRecord> upcomingDomainsFor(
+  List<DomainRecord> domains, {
+  DateTime? now,
+}) {
+  final reference = now ?? DateTime.now();
+  final today = DateTime(reference.year, reference.month, reference.day);
+  final upcoming = domains.where((domain) {
+    final date = _relevantDate(domain);
+    return date != null && !date.isBefore(today);
+  }).toList()..sort((a, b) => _relevantDate(a)!.compareTo(_relevantDate(b)!));
+  return upcoming;
+}
+
+DateTime? _relevantDate(DomainRecord domain) =>
+    domain.renewalIntent == RenewalIntent.renew
+    ? domain.effectiveBillingDate
+    : domain.effectiveExpirationDate;
 
 DomainRecord? nextPaymentFor(List<DomainRecord> domains, {DateTime? now}) {
   final reference = now ?? DateTime.now();

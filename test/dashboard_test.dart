@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 DomainRecord domain({
   required String name,
-  required DateTime date,
+  DateTime? date,
   int? cost = 1200,
   CurrencyCode currency = CurrencyCode.usd,
   LifecycleState lifecycle = LifecycleState.active,
@@ -61,5 +61,17 @@ void main() {
       ),
     ], now: today);
     expect(totals, {CurrencyCode.usd: 1200, CurrencyCode.gbp: 700});
+  });
+
+  test('upcoming list excludes active domains without a relevant date', () {
+    final result = upcomingDomainsFor([
+      domain(name: 'unscheduled.example'),
+      domain(
+        name: 'past.example',
+        date: today.subtract(const Duration(days: 1)),
+      ),
+      domain(name: 'scheduled.example', date: today),
+    ], now: today);
+    expect(result.map((item) => item.name), ['scheduled.example']);
   });
 }
