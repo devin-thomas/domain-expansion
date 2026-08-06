@@ -37,8 +37,8 @@ void main() {
         ],
       );
 
-      expect(cancelled, containsAll(<int>[7060, 7061, 7014, 7015]));
-      expect(cancelled, hasLength(4));
+      expect(cancelled, containsAll(<int>[2, 3, 4, 5, 7060, 7061, 7014, 7015]));
+      expect(cancelled, hasLength(8));
     },
   );
 }

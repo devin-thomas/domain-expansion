@@ -28,6 +28,9 @@ enum CurrencyCode {
       tryFromCode(code) ?? CurrencyCode.usd;
 }
 
+const maxReminderOffsets = 12;
+const maxReminderDaysBefore = 3660;
+
 class DomainValidationException implements Exception {
   const DomainValidationException(this.message);
   final String message;

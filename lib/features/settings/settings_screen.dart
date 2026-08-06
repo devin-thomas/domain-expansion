@@ -92,7 +92,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Reminder offsets',
                         helperText:
-                            'Comma-separated days before the target date, e.g. 30,14,7,1',
+                            'Up to 12 offsets from 0 to 3660 days, e.g. 30,14,7,1',
                       ),
                       keyboardType: TextInputType.number,
                     ),
@@ -265,12 +265,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final values = rawValues
         .map((value) => int.tryParse(value.trim()))
         .toList();
+    final validValues = values.whereType<int>().toSet();
     if (rawValues.any((value) => value.trim().isEmpty) ||
-        values.any((value) => value == null || value < 0)) {
+        values.any(
+          (value) =>
+              value == null || value < 0 || value > maxReminderDaysBefore,
+        ) ||
+        validValues.isEmpty ||
+        validValues.length > maxReminderOffsets) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Use non-negative whole numbers separated by commas, such as 30,14,7,1.',
+            'Use up to 12 whole-number offsets from 0 to 3660 days.',
           ),
         ),
       );
@@ -278,8 +284,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
     setState(() => _saving = true);
     try {
-      final normalized = values.whereType<int>().toSet().toList()
-        ..sort((a, b) => b.compareTo(a));
+      final normalized = validValues.toList()..sort((a, b) => b.compareTo(a));
       final database = ref.read(databaseProvider);
       await database.setMetadataValue('default_currency', _currency.code);
       await database.setMetadataValue(

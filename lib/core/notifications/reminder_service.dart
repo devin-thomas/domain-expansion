@@ -10,9 +10,12 @@ class ReminderService {
   ReminderService(
     this._plugin, {
     Future<void> Function(int id)? cancelNotification,
-  }) : _cancelNotification = cancelNotification;
+    Future<void> Function()? cancelAllNotifications,
+  }) : _cancelNotification = cancelNotification,
+       _cancelAllNotifications = cancelAllNotifications;
   final FlutterLocalNotificationsPlugin _plugin;
   final Future<void> Function(int id)? _cancelNotification;
+  final Future<void> Function()? _cancelAllNotifications;
   int notificationHour = 9;
 
   Future<void> initialize() async {
@@ -57,6 +60,13 @@ class ReminderService {
     List<ReminderRecord> reminders,
   ) async {
     await cancelDomain(domain.id, reminders: reminders);
+    await _scheduleDomain(domain, reminders);
+  }
+
+  Future<void> _scheduleDomain(
+    DomainRecord domain,
+    List<ReminderRecord> reminders,
+  ) async {
     if (domain.id == null ||
         domain.isArchived ||
         domain.lifecycleState != LifecycleState.active) {
@@ -109,10 +119,8 @@ class ReminderService {
   }) async {
     if (domainId == null) return;
     final ids = <int>{
-      for (final reminder in reminders) ...[
-        _notificationIdForOffset(domainId, reminder.daysBefore),
-        _notificationIdForOffset(domainId, reminder.daysBefore) + 1,
-      ],
+      for (final reminder in reminders)
+        ..._notificationIdsForReminder(domainId, reminder),
     };
     for (final id in ids) {
       if (_cancelNotification != null) {
@@ -125,12 +133,26 @@ class ReminderService {
 
   Future<void> rescheduleAll(AppDatabase database) async {
     await configureFromDatabase(database);
+    if (_cancelAllNotifications != null) {
+      await _cancelAllNotifications();
+    } else {
+      await _plugin.cancelAll();
+    }
     final domains = await database.getDomains(includeArchived: true);
+    final remindersByDomain = await database.getRemindersByDomain();
+    const batchSize = 8;
+    final pending = <Future<void>>[];
     for (final domain in domains) {
-      await rescheduleDomain(
-        domain,
-        domain.id == null ? const [] : await database.getReminders(domain.id!),
+      pending.add(
+        _scheduleDomain(domain, remindersByDomain[domain.id] ?? const []),
       );
+      if (pending.length == batchSize) {
+        await Future.wait(pending);
+        pending.clear();
+      }
+    }
+    if (pending.isNotEmpty) {
+      await Future.wait(pending);
     }
   }
 
@@ -151,9 +173,30 @@ class ReminderService {
         : 'expiration';
   }
 
-  int _notificationId(int domainId, ReminderRecord reminder) =>
-      _notificationIdForOffset(domainId, reminder.daysBefore) +
-      (reminder.targetType == 'expiration' ? 1 : 0);
+  Iterable<int> _notificationIdsForReminder(
+    int domainId,
+    ReminderRecord reminder,
+  ) sync* {
+    final currentBase = reminder.id == null
+        ? _notificationIdForOffset(domainId, reminder.daysBefore)
+        : reminder.id! * 2;
+    yield currentBase;
+    yield currentBase + 1;
+
+    // Clean up IDs created by versions before reminders had stable IDs.
+    final legacyBase = _notificationIdForOffset(domainId, reminder.daysBefore);
+    if (legacyBase != currentBase) {
+      yield legacyBase;
+      yield legacyBase + 1;
+    }
+  }
+
+  int _notificationId(int domainId, ReminderRecord reminder) {
+    final base = reminder.id == null
+        ? _notificationIdForOffset(domainId, reminder.daysBefore)
+        : reminder.id! * 2;
+    return base + (reminder.targetType == 'expiration' ? 1 : 0);
+  }
 
   int _notificationIdForOffset(int domainId, int offset) =>
       domainId * 1000 + offset * 2;

@@ -216,6 +216,19 @@ class AppDatabase {
     return rows.map(_reminderFromMap).toList();
   }
 
+  Future<Map<int, List<ReminderRecord>>> getRemindersByDomain() async {
+    final rows = await db.query(
+      'reminders',
+      orderBy: 'domain_id ASC, days_before DESC',
+    );
+    final grouped = <int, List<ReminderRecord>>{};
+    for (final row in rows) {
+      final reminder = _reminderFromMap(row);
+      grouped.putIfAbsent(reminder.domainId, () => []).add(reminder);
+    }
+    return grouped;
+  }
+
   Future<void> saveReminder(ReminderRecord reminder) async {
     final now = DateTime.now().toIso8601String();
     await db.insert('reminders', {
@@ -341,14 +354,16 @@ class AppDatabase {
   Future<List<int>> getDefaultReminderOffsets() async {
     final raw =
         await getMetadataValue('default_reminder_offsets') ?? '30,14,7,1';
-    return raw
-        .split(',')
-        .map(int.tryParse)
-        .whereType<int>()
-        .where((value) => value >= 0)
-        .toSet()
-        .toList()
-      ..sort((a, b) => b.compareTo(a));
+    final offsets =
+        raw
+            .split(',')
+            .map(int.tryParse)
+            .whereType<int>()
+            .where((value) => value >= 0 && value <= maxReminderDaysBefore)
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
+    return offsets.take(maxReminderOffsets).toList();
   }
 
   Future<Map<String, Object>> exportSnapshot() async {
@@ -408,6 +423,12 @@ class AppDatabase {
     return db.transaction((txn) async {
       final importedIds = <String, int>{};
       final skippedExportIds = <String>{};
+      final existingRows = await txn.query('domains');
+      final existingByName = <String, Map<String, Object?>>{
+        for (final row in existingRows)
+          row['normalized_name']! as String: Map<String, Object?>.from(row),
+      };
+      final importedReminderCounts = <int, int>{};
       var created = 0;
       var updated = 0;
       var skipped = 0;
@@ -421,41 +442,36 @@ class AppDatabase {
         final exportId =
             (item['export_id'] ?? item['id'] ?? domain.normalizedName)
                 .toString();
-        final existingRows = await txn.query(
-          'domains',
-          where: 'normalized_name = ?',
-          whereArgs: [domain.normalizedName],
-          limit: 1,
-        );
-        if (existingRows.isNotEmpty && policy == ImportConflictPolicy.skip) {
-          importedIds[exportId] = existingRows.first['id']! as int;
+        final existing = existingByName[domain.normalizedName];
+        if (existing != null && policy == ImportConflictPolicy.skip) {
+          importedIds[exportId] = existing['id']! as int;
           skippedExportIds.add(exportId);
           skipped++;
           continue;
         }
-        if (existingRows.isNotEmpty && policy == ImportConflictPolicy.merge) {
-          final existing = _domainFromMap(existingRows.first);
-          final merged = _mergeDomain(existing, domain);
+        if (existing != null && policy == ImportConflictPolicy.merge) {
+          final merged = _mergeDomain(_domainFromMap(existing), domain);
           await txn.update(
             'domains',
             _domainToMap(merged)..remove('id'),
             where: 'id = ?',
-            whereArgs: [existing.id],
+            whereArgs: [merged.id],
           );
-          importedIds[exportId] = existing.id!;
+          importedIds[exportId] = merged.id!;
+          existingByName[domain.normalizedName] = _domainToMap(merged);
           updated++;
           continue;
         }
-        if (existingRows.isNotEmpty) {
+        if (existing != null) {
           await txn.delete(
             'domains',
             where: 'id = ?',
-            whereArgs: [existingRows.first['id']],
+            whereArgs: [existing['id']],
           );
           await txn.delete(
             'reminders',
             where: 'domain_id = ?',
-            whereArgs: [existingRows.first['id']],
+            whereArgs: [existing['id']],
           );
         }
         final id = await txn.insert(
@@ -463,7 +479,9 @@ class AppDatabase {
           _domainToMap(domain)..remove('id'),
         );
         importedIds[exportId] = id;
-        if (existingRows.isEmpty) {
+        final importedMap = _domainToMap(domain)..['id'] = id;
+        existingByName[domain.normalizedName] = importedMap;
+        if (existing == null) {
           created++;
         } else {
           updated++;
@@ -481,9 +499,24 @@ class AppDatabase {
         if (domainId == null || skippedExportIds.contains(exportDomainId)) {
           continue;
         }
+        final reminderCount = (importedReminderCounts[domainId] ?? 0) + 1;
+        if (reminderCount > maxReminderOffsets) {
+          throw const FormatException(
+            'A domain cannot contain more than 12 reminders.',
+          );
+        }
+        final daysBefore = _asInt(reminder['days_before']);
+        if (daysBefore == null ||
+            daysBefore < 0 ||
+            daysBefore > maxReminderDaysBefore) {
+          throw const FormatException(
+            'Reminder offsets must be between 0 and 3660 days.',
+          );
+        }
+        importedReminderCounts[domainId] = reminderCount;
         await txn.insert('reminders', {
           'domain_id': domainId,
-          'days_before': _asInt(reminder['days_before']) ?? 0,
+          'days_before': daysBefore,
           'target_type': reminder['target_type']?.toString() ?? 'default',
           'is_enabled': _asBool(reminder['is_enabled']) ? 1 : 0,
           'created_at':
