@@ -1,5 +1,9 @@
+import 'dart:async';
+
+import 'package:domain_expansion/core/database/app_database.dart';
 import 'package:domain_expansion/core/formatting/formatters.dart';
 import 'package:domain_expansion/core/models/domain_record.dart';
+import 'package:domain_expansion/core/notifications/reminder_service.dart';
 import 'package:domain_expansion/core/providers/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -519,12 +523,19 @@ class _DomainFormScreenState extends ConsumerState<DomainFormScreen> {
         }
       }
       final saved = (await database.getDomain(id))!;
-      await ref.read(reminderServiceProvider).configureFromDatabase(database);
-      await ref
-          .read(reminderServiceProvider)
-          .rescheduleDomain(saved, await database.getReminders(id));
+      final reminders = await database.getReminders(id);
       await database.setMetadataValue('onboarding_completed', '1');
       invalidateDomainData(ref, id);
+      final reminderService = ref.read(reminderServiceProvider);
+      unawaited(
+        _refreshRemindersInBackground(
+          reminderService,
+          database,
+          saved,
+          reminders,
+          isNew: _existing == null,
+        ),
+      );
       if (!mounted) return;
       if (_existing == null && before.isEmpty) {
         ScaffoldMessenger.of(
@@ -540,6 +551,25 @@ class _DomainFormScreenState extends ConsumerState<DomainFormScreen> {
       }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _refreshRemindersInBackground(
+    ReminderService reminderService,
+    AppDatabase database,
+    DomainRecord domain,
+    List<ReminderRecord> reminders, {
+    required bool isNew,
+  }) async {
+    try {
+      await reminderService.configureFromDatabase(database);
+      if (isNew) {
+        await reminderService.scheduleDomain(domain, reminders);
+      } else {
+        await reminderService.rescheduleDomain(domain, reminders);
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Could not refresh domain reminders: $error\n$stackTrace');
     }
   }
 }

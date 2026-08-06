@@ -63,6 +63,11 @@ class ReminderService {
     await _scheduleDomain(domain, reminders);
   }
 
+  Future<void> scheduleDomain(
+    DomainRecord domain,
+    List<ReminderRecord> reminders,
+  ) => _scheduleDomain(domain, reminders);
+
   Future<void> _scheduleDomain(
     DomainRecord domain,
     List<ReminderRecord> reminders,
