@@ -79,3 +79,44 @@
 **Rationale:** Natural-language capture can be faster than filling even a simplified form, and the project already has a proven extraction/review pattern from Wayfarer. AI uncertainty must not silently corrupt canonical domain records.
 
 **Consequences:** AI runs server-side behind a replaceable provider adapter. Structured-output validation is mandatory. Provider output is untrusted proposed data until approved.
+
+
+## ADR-009 - Keep AI approval explicit and lightweight
+
+**Status:** Accepted
+
+**Decision:** AI Quick Add never auto-saves. It returns a compact editable review state and requires explicit approval before writing canonical data.
+
+**Rationale:** The feature exists to make capture faster without allowing uncertain model output to become authoritative data.
+
+**Consequences:** The review UI must be simpler than a general-purpose AI review workflow and optimized for one-click approval when the extracted values are already correct.
+
+## ADR-010 - Support batch AI extraction
+
+**Status:** Accepted
+
+**Decision:** One AI Quick Add submission may produce one or many proposed domain records.
+
+**Rationale:** Batch natural-language capture can save substantial time with little additional conceptual complexity.
+
+**Consequences:** Extraction output and review state must support arrays of drafts, per-item validation, individual correction, and efficient approval of multiple valid drafts.
+
+## ADR-011 - Use owner exception plus BYOK for AI provider access
+
+**Status:** Accepted
+
+**Decision:** The owner/admin account may use a privately configured server-side Gemini credential. Other approved users must deliberately configure their own supported AI provider credential before AI Quick Add is enabled for them.
+
+**Rationale:** The owner accepts the data-handling implications of the private Gemini project, while other users should not have their domain information sent through that project without their own explicit provider relationship.
+
+**Consequences:** AI availability is account-dependent. BYOK credential storage, encryption, rotation, revocation, and provider-error behavior must be specified before implementation.
+
+## ADR-012 - Email the administrator on access requests
+
+**Status:** Accepted
+
+**Decision:** New access requests appear in the admin interface and also trigger an external email notification to the administrator.
+
+**Rationale:** The gated access model is intended to surface unexpected product interest without requiring the administrator to repeatedly check an admin page.
+
+**Consequences:** The implementation needs a reliable admin-notification delivery path independent from the applicant-facing Firebase passwordless authentication email.
