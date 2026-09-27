@@ -18,7 +18,9 @@ These checks use the memory store, a fake mail port, a fake Gemini port, and the
 
 ## Follow-up QA on the implementation branch
 
-The local clone passed `npm run lint`, `npm run build`, `npm test` (23 passed; emulator tests skipped), and `npm run test:browser` (5 passed). New API regressions cover fail-closed deployed configuration, shared API request limits, preserving Calendar metadata when Tasks is connected, and exact import preview changes. Browser regressions cover archive restore, token revocation, and import commit refresh. The local Firestore emulator did not finish starting on this machine, which currently has Java 17; this follow-up does not replace the earlier emulator evidence above. `npm audit --omit=dev` still reports one high-severity advisory for the `xlsx` package used to parse user-selected imports. Resolve or mitigate that dependency before production release.
+The local clone passed `npm run lint`, `npm run build`, `npm test` (23 passed; emulator tests skipped), and `npm run test:browser` (5 passed). New API regressions cover fail-closed deployed configuration, shared API request limits, preserving Calendar metadata when Tasks is connected, and exact import preview changes. Browser regressions cover archive restore, token revocation, and import commit refresh. The local Firestore emulator did not finish starting on this machine, which currently has Java 17; this follow-up does not replace the earlier emulator evidence above.
+
+The XLSX import parser now uses SheetJS `0.20.3` from the vendor CDN, locked with an integrity hash in `package-lock.json`; the stale Bun lockfile was removed and Vercel uses `npm ci`. `npm audit --omit=dev --audit-level=high` reports no high or critical production advisories. Eight moderate production advisories remain in the Firebase Admin dependency tree. The full development audit still reports one high and two critical findings in `firebase-tools`/`vitest`; review those before relying on those tools in a shared CI environment.
 
 ## Blocked before calling the host live
 
