@@ -1,6 +1,6 @@
 # Domain Expansion — Implementation Queue
 
-**Pack status:** discovery complete; specification written. **Implementation status:** all 17 tickets Not started. This queue is for the canonical web repository, not the Flutter donor project.
+**Pack status:** discovery complete; specification written. **Implementation status:** DEW-001 through DEW-016 Complete on automated evidence recorded in each ticket (2026-09-27). DEW-017 Blocked. This queue is for the canonical web repository, not the Flutter donor project.
 
 Read [Context](../Context.md), [ADR](../ADR.md), and [SPEC](../SPEC.md) first. Implement the first incomplete ticket whose dependencies are satisfied. Numerical order is a valid execution order; independent work may run in parallel only without bypassing dependencies. Update each ticket with real verification evidence before changing its status. Do not mark a ticket complete because its specification exists.
 

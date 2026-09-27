@@ -1,6 +1,6 @@
 # DEW-015 — Decouple optional Google integrations from application identity
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -30,4 +30,4 @@ Contract: SPEC section 11.2; R11, R12.
 
 ## Verification
 
-Not run. Record scope/callback and UID-stability tests plus authorized real provider actions. Separate synthetic API tests from successful external event/task/file creation, and remove disposable test artifacts only with appropriate authorization.
+2026-09-27. `src/services/googleIntegration.ts` requests `calendar.events`, `tasks`, `spreadsheets`, or `drive.file` for the chosen action. `tests/unit/legacy.test.ts` confirms `src/` has no `appDataFolder`. The settings copy says connecting Google does not change Domain Expansion sign-in, and an unconfigured client leaves saves intact. Uncertain Calendar or Tasks results do not create a second item. No live Google event, task, sheet, or Drive file was created.

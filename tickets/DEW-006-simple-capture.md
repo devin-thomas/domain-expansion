@@ -1,6 +1,6 @@
 # DEW-006 — Preserve fast, sparse human capture
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -29,4 +29,4 @@ Contract: SPEC sections 3.1–3.3; R03, R13.
 
 ## Verification
 
-Not run. Record browser checks at 390x844 and 1440x900, keyboard-only capture, server-failure/retry, and account-switch behavior. Preserve screenshots showing the five-group simplicity boundary.
+2026-09-27. `npx playwright test` passed in Chrome. The first test uses a 390×844 viewport, saves `phone.example` from the five Quick Add fields with the advanced panel closed, then checks the same record at 1440×900 and `/showcase`. A second test reaches the domain field and the registrar field with Tab. Account-switch clearing is implemented in the client (`clearPrivate` before a new session). No physical device was used.

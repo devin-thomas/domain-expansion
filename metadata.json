@@ -1,6 +1,6 @@
 {
   "name": "Domain Expansion",
-  "description": "Personal utility for tracking website domains owned or managed across multiple registrars with private storage in Google Drive.",
+  "description": "Domain Expansion tracks renewal dates, costs, and intent for website domains in a private account portfolio.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

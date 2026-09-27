@@ -1,6 +1,6 @@
 # DEW-005 — Persist private portfolios through the domain service
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -29,4 +29,4 @@ Contract: SPEC sections 4–5 and 9; R02, R04, R12, R15.
 
 ## Verification
 
-Not run. Record Firestore Emulator rules tests, server-side tenant tests, concurrency/idempotency fixtures, and inspection proving the old automatic persistence path is no longer called.
+2026-09-27. `npm run test:emulator` passed client-rule denial for an authenticated user, Admin SDK isolation (another member and an admin both receive the same not-found result), and cross-user credential rotation. `tests/unit/legacy.test.ts` asserts `src/` no longer contains `appDataFolder`, `domain_expansion_data_v1`, or `googleDriveStorage.ts`. API tests cover idempotency replay, 409 on key reuse with a different body, 428/412 revisions, and foreign-id 404.

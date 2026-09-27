@@ -1,15 +1,26 @@
 {
-  "name": "react-example",
+  "name": "domain-expansion",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "bin": {
+    "domain-expansion": "./cli/domain-expansion.mjs"
+  },
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs && tsx scripts/check-client-boundary.ts",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:api": "vitest run tests/api tests/cli",
+    "test:emulator": "firebase emulators:exec --only firestore --project demo-domain-expansion \"vitest run tests/emulator\"",
+    "test:browser": "playwright test",
+    "check:boundary": "tsx scripts/check-client-boundary.ts",
+    "domain-expansion": "tsx cli/main.ts",
+    "openapi": "tsx scripts/write-openapi.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -24,7 +35,9 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "vite": "^6.2.3",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "3.25.76",
+    "firebase-admin": "13.10.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
@@ -35,6 +48,10 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "vitest": "3.2.4",
+    "firebase-tools": "14.23.0",
+    "@firebase/rules-unit-testing": "5.0.2",
+    "@playwright/test": "1.55.1"
   }
 }

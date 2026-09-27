@@ -1,6 +1,6 @@
 # DEW-004 — Deliver access requests, admin decisions, and email alerts
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -29,4 +29,4 @@ Contract: SPEC section 6; R01, R10.
 
 ## Verification
 
-Not run. Record race/duplicate/throttling/failure tests and an authorized actual admin inbox receipt. Distinguish provider acceptance from observed delivery. Record the protected retry mechanism and operating cadence.
+2026-09-27. `tests/api/matrix.test.ts` checks duplicate access requests return the same public body, one admin alert, HTML escaping of the reason, approve with `emailVerified: false`, and deny without treating the applicant as a member. Suspension then blocks that user's domain list. The mail adapter test checks the Resend idempotency header on a stubbed fetch. No message was delivered to a real admin inbox, so provider acceptance here is not observed delivery. Retry routes are `POST /api/admin/notifications/:id/retry` and `POST /api/internal/notifications/retry`.

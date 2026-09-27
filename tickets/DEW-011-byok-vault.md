@@ -1,6 +1,6 @@
 # DEW-011 — Store AI credentials safely and isolate the owner exception
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -29,4 +29,4 @@ Contract: SPEC section 7; R06.
 
 ## Verification
 
-Not run. Record cryptographic tamper/AAD/rotation tests, permission matrix, owner-exception tests, consent behavior, and safe client/log inspection. Never put real key material in evidence.
+2026-09-27. `tests/unit/backup-vault.test.ts` fails closed on a wrong AAD and a tampered tag, then rotates a memory-store credential from key id `v1` to `v2` without leaving the plaintext in the stored JSON. The emulator test repeats that rotation through the Firestore collection-group listing. `tests/api/matrix.test.ts` shows a member with no key gets 422 and zero provider calls, a member key is the only key sent for that user, and the owner UID uses the configured owner key. The settings copy says server processing and Google's terms apply and does not promise a no-training guarantee. No real key material is in this note.

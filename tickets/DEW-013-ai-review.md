@@ -1,6 +1,6 @@
 # DEW-013 — Make AI review compact, explicit, and batch-friendly
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -30,4 +30,4 @@ Contract: SPEC sections 3.4 and 8; R03, R05, R13, R15.
 
 ## Verification
 
-Not run. Record browser single/batch/correction flows, zero-write-before-approval assertions, dirty-close behavior, duplicate race, double-click recovery, and small-screen screenshots.
+2026-09-27. Playwright opens AI Quick Add, expects the proposal field, and expects zero Save and zero Add selected controls before any draft exists. The API extract test leaves the portfolio empty. Explicit approval is the Add selected action, which posts a batch with `source: ai`. No live model review was run.

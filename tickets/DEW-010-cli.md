@@ -1,6 +1,6 @@
 # DEW-010 — Deliver the thin official CLI
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -30,4 +30,4 @@ Contract: SPEC section 10; R07, R08, R09.
 
 ## Verification
 
-Not run. Record subprocess/API integration tests, Windows/macOS evidence or exact platform limitation, redaction checks, pagination, interrupted export, and destructive-command negative tests.
+2026-09-27. `tests/cli/cli.test.ts` drives `cli/main.ts` against the local API: help, version `1.0.0`, refusal of `--token`, add, idempotent replay, list, archive, and permanent delete refused for a read/write token. This run was Linux only. Windows and macOS were not executed.

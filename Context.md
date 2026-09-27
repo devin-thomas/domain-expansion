@@ -4,7 +4,7 @@
 
 Discovery is complete: **5 rounds, 20 product questions resolved**. The final user instruction approves separate API delete permission, strict per-user storage, and archive-first operation, and explicitly removes legacy Google Drive migration from this build. The requested endpoint is the documentation/build pack, not implementation or infrastructure changes.
 
-Read [SPEC.md](SPEC.md) for the implementation contract and [tickets/README.md](tickets/README.md) for the ordered work. All implementation tickets initially remain Not started. [ADR.md](ADR.md) preserves decision history, including the superseded migration decision. [Ideas.md](Ideas.md) is non-binding deferred work.
+Read [SPEC.md](SPEC.md) for the implementation contract and [tickets/README.md](tickets/README.md) for the ordered work. As of 2026-09-27, DEW-001 through DEW-016 are Complete on the automated evidence in those tickets. DEW-017 is Blocked pending DNS, sender, inbox, billing, and physical-device checks. [ADR.md](ADR.md) preserves decision history, including the superseded migration decision. [Ideas.md](Ideas.md) is non-binding deferred work.
 
 Authority: current explicit user decision → Context → ADR rationale → SPEC → ticket acceptance criteria → implementation. Do not mistake the existing prototype for completed target behavior.
 

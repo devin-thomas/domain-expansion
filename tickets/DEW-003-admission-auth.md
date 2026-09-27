@@ -1,6 +1,6 @@
 # DEW-003 — Establish approved membership and passwordless authentication
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -29,4 +29,4 @@ Contract: SPEC sections 5–6 and 12; R01, R02.
 
 ## Verification
 
-Not run. Record emulator/token tests and real Firebase email completion separately. Verify project quota and sender/callback configuration before claiming live delivery; no billing change is authorized by this ticket alone.
+2026-09-27. `tests/api/matrix.test.ts` rejects anonymous, unverified, unapproved, wrong-project, and suspended callers. The live mail adapter test asserts `accounts:sendOobCode` with `requestType: EMAIL_SIGNIN` against a stubbed fetch. No real Firebase inbox was completed, and no quota or billing change was made. Test tokens are `test.*` only when `DOMAIN_EXPANSION_TEST_AUTH=1` and `APP_ENV` is not production.

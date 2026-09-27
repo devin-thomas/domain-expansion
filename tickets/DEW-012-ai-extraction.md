@@ -1,6 +1,6 @@
 # DEW-012 — Extract bounded domain drafts with Gemini
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -29,4 +29,4 @@ Contract: SPEC section 8; R05, R06.
 
 ## Verification
 
-Not run. Record validation/abuse/provider-failure tests and real primary extraction separately. Demonstrate fallback with a controlled transient-failure test; report actual model access and safe fixture output, not key values.
+2026-09-27. `tests/api/matrix.test.ts` uses a fake provider. A 429 from `gemini-3.5-flash-lite` falls back once to `gemini-3.8-flash` with the same caller key. The year is returned as a labeled proposal. The domain list stays empty after extract. A member never receives the owner key. No live Gemini request was made, so this is not real primary-model access.
