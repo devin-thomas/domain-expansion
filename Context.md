@@ -1,398 +1,156 @@
 # Domain Expansion — Context
 
-## Discovery Status
+## Status and authority
 
-- Grill-to-Build discovery round: 4 complete
-- Product questions answered: 16
-- Living model format: Markdown/Mermaid (workflow default because no explicit preference was supplied)
-- Specification status: not yet created; discovery is still active
-- Tickets status: not yet created
+Discovery is complete: **5 rounds, 20 product questions resolved**. The final user instruction approves separate API delete permission, strict per-user storage, and archive-first operation, and explicitly removes legacy Google Drive migration from this build. The requested endpoint is the documentation/build pack, not implementation or infrastructure changes.
 
-## Product Summary
+Read [SPEC.md](SPEC.md) for the implementation contract and [tickets/README.md](tickets/README.md) for the ordered work. All implementation tickets initially remain Not started. [ADR.md](ADR.md) preserves decision history, including the superseded migration decision. [Ideas.md](Ideas.md) is non-binding deferred work.
 
-Domain Expansion is a fast, human-first domain portfolio tracker with a richer canonical data model underneath a deliberately simple interface.
+Authority: current explicit user decision → Context → ADR rationale → SPEC → ticket acceptance criteria → implementation. Do not mistake the existing prototype for completed target behavior.
 
-The current implementation base is `devin-thomas/domain-expansion-ai-studio`, a React/TypeScript/Vite web application deployed on Vercel. The original Flutter repository, `devin-thomas/domain-expansion`, is a reference/donor implementation for richer domain semantics and advanced workflows, not the implementation base to continue.
+## Product and implementation base
 
-The public production identity should use:
+Domain Expansion is a fast, human-first website domain tracker, with richer data available when a task actually needs it. Continue in `devin-thomas/domain-expansion-ai-studio`, preserving its React/TypeScript/Vite interface, responsive work, and product showcase. The original Flutter `devin-thomas/domain-expansion` is a reference for domain semantics, not a second implementation to maintain or merge.
 
-- App URL: `domains.devthomas.site`
-- Passwordless authentication sender target: `Domain Expansion <auth@devthomas.site>`
+Production identity: `domains.devthomas.site`. Authentication sender target: `Domain Expansion <auth@devthomas.site>`, subject to verifying Firebase's template and DNS configuration. This documentation does not assert that either has been provisioned.
 
-## Product Principle
+### Governing principle: a small number of impactful items
 
-### A small number of impactful items
+A richer schema must not become a larger default form. Normal use is for someone jotting down information while doing something else. Primary screens emphasize one task and a few useful values; advanced information is deliberately opened, not displayed everywhere. No redesign that undoes the AI Studio version's simplicity is authorized.
 
-Every primary screen should show a small number of high-impact actions, values, or decisions.
+## Capture and presentation
 
-The application may know substantially more about a domain than it asks a human to enter during routine capture.
+There are exactly two capture modes:
 
-Advanced capability must not make quick capture slower, noisier, or cognitively heavier.
+1. **Quick Add:** Domain, Registrar, Renewal date, Renewal cost + currency, and Renew / Let expire. Active, Owned, and the default currency are ordinary defaults. Unknown costs stay unknown. `More details` opens advanced fields without making them prerequisites for ordinary capture.
+2. **✨ AI Quick Add:** a compact command/chat input, followed by small editable review cards and an explicit Add action. It accepts one or many domain descriptions. It never auto-saves, even when every value looks certain. Valid selected drafts can be approved together; ambiguous or invalid drafts remain available for correction.
 
-The original Flutter product model is valuable as a source of richer semantics, but its richer fields and workflows must be gated behind deliberate advanced surfaces rather than reintroduced into the default flow.
+An AI preview should feel like `foo.dev · Porkbun · Mar 4, 2027 · $12 USD · Renew`, not another application inside the application. An inferred year must be visible as a proposal, not silently asserted. Only unresolved facts require extra work. Successful approval returns to the useful application state.
 
-## Primary Use
+Dashboard priority: next expected payment, next-12-month expected cost separated by currency, and a compact upcoming list. Search and ordinary edit/archive remain easy to reach. Advanced record details, reports, imports/exports, integration connections, AI key setup, and developer tokens live behind deliberate detail/settings surfaces. Admin navigation appears only for the appropriate role. The public showcase contains synthetic product evidence, never private user records.
 
-The normal user should be able to record a domain quickly while doing something else, with minimal interruption.
+## Ubiquitous language
 
-The two primary capture modes are:
+| Term | Meaning and source of truth |
+|---|---|
+| Domain record | A user-entered portfolio item; not proof of domain ownership and not a registrar control panel. |
+| Ownership | Stored relationship: `owned` or `managed`; independent of application account ownership. |
+| Lifecycle | Stored `active`, `inactive`, or `transferred`. |
+| Renewal intention | Stored `renew` or `let_expire`; reversible and separate from actual registrar auto-renew. |
+| Auto-renew | User-recorded registrar setting; `true`, `false`, or unknown. The application does not change the registrar. |
+| Billing / expiration | Separate date-only facts. Effective billing falls back to expiration and vice versa. |
+| Quick Add renewal date | Simple input mapped to expiration date, with billing left unset; fallback supplies the initial payment date. |
+| Registration / renewal cost | Separate optional integer minor-unit amounts in the record's currency. Unknown is not zero. |
+| Archive | Reversible exclusion from ordinary active views; preserves the record. |
+| Permanent delete | Explicit irreversible record removal, separately authorized. |
+| AI draft | Untrusted proposed data, not a saved domain. |
+| Approved member | Identity permitted to use the application; authentication alone is insufficient. |
+| Administrator | Application access-management role, not permission to read other portfolios. |
+| Owner exception | One explicitly configured owner UID may use the server's Gemini credential; it is not inherited by all admins. |
+| Personal access token | Scoped, revocable automation credential, not a Firebase browser session or Gemini key. |
 
-1. Structured Quick Add
-2. AI Quick Add
+Stored advanced data includes registrar, DNS provider, ownership, lifecycle, renewal intention, auto-renew, registration/billing/expiration dates, registration/renewal costs, currency, notes, archive state, reminder configuration, and created/updated metadata. Effective dates, urgency, spending totals, and upcoming status are derived. External Google event/task references are integration metadata, not authority over the domain record.
 
-Both modes produce the same canonical domain record and use the same validation rules.
+## Accounts, approval, and privacy
 
-## Structured Quick Add
+Visitors can Sign in or Request access. A request creates a pending administrative item, not authorized product access. The administrator gets both the queue/badge and an email notification. Approve grants eligibility and initiates the first Firebase sign-in email; Deny does not grant access. Failed email delivery must not lose a request or silently undo an approval.
 
-The normal quick-add surface contains only:
+Every authenticated request checks current membership. Directly obtaining a Firebase identity does not bypass approval. Suspending membership disables both browser and API access without deleting the portfolio. Bootstrap the owner through trusted deployment configuration, never a public first-user-is-admin rule.
 
-- Domain
-- Registrar
-- Renewal date
-- Renewal cost + currency
-- Renewal intention: Renew / Let expire
+Every user's records are private to that account in the product. The admin interface manages requests and membership only; it contains no cross-user portfolio browsing, impersonation, or key-retrieval feature. This is application-level isolation, **not end-to-end encryption**: privileged cloud operators and backend service credentials remain within the infrastructure trust boundary. Privacy text must say this honestly.
 
-Ordinary defaults cover concepts such as Active and Owned unless the user chooses to change them.
+## Authentication and mail
 
-A `More details` action exposes advanced fields without expanding the default form.
+Firebase Authentication handles passwordless email links and initially sends those emails itself. Resend sends administrator-facing access-request notifications. Resend is not the default authentication sender in this build. Google OAuth is optional integration authorization, separate from Domain Expansion identity.
 
-## AI Quick Add
+The URL, authorized domains, email action callbacks, sender verification, abuse limits, and actual delivery need release evidence. Firebase's documented Spark email-link quota is small; review billing/quota configuration before inviting other users. Do not silently enable paid billing or switch providers as part of implementing the pack.
 
-AI Quick Add is a separate quick-add mode marked with an AI/sparkles visual treatment.
+## Persistence and service boundary
 
-Example input:
+Firestore is authoritative. Ordinary reads and writes go through a common server API/domain service, whether the caller is the browser or CLI. User data is nested below `users/{uid}`; the UID comes from the verified caller, never an untrusted request field.
 
-> add foo.dev, Porkbun, $12 renewal, expires March 4
-
-The AI path must follow this sequence:
+Conceptual layout:
 
 ```text
-Natural-language input
-        ↓
-Server-side extraction
-        ↓
-Structured domain draft
-        ↓
-Validation + uncertainty display
-        ↓
-User review/correction
-        ↓
-Explicit approval
-        ↓
-Canonical Firestore save
+users/{uid}/domains/{domainId}
+users/{uid}/domainNames/{normalizedNameHash}
+users/{uid}/settings/app
+users/{uid}/apiTokens/{tokenId}
+users/{uid}/privateCredentials/gemini
+members/{uid}
+accessRequests/{requestId}
+server-only approval, notification, rate-limit, and idempotency records
 ```
 
-AI output is proposed data, never canonical state by itself.
+Client Firestore access is denied in the initial API-first implementation. Firebase Admin bypasses client security rules, so the server must enforce ownership, membership, and scopes independently. Secrets and access-control records are not ordinary user-readable documents.
 
-AI Quick Add never auto-saves. Review must remain extremely lightweight: a compact editable preview, clear uncertainty markers where needed, and one explicit approval action.
+### No legacy Drive migration
 
-A single AI submission may yield one or many proposed domain records. Batch review must support approving all valid drafts or handling individual drafts without turning the interaction into a heavy workflow.
+The owner reports no known Drive backup requiring migration and explicitly excludes that work. Do not build a legacy discovery scan, first-login migration wizard, reconciliation system, or `appDataFolder` migration ticket. Start with an empty Firestore portfolio for a new approved account. Remove old live-sync behavior without attempting to delete external files or silently adopt legacy browser data.
 
-Unknown or ambiguous values remain unknown or are surfaced for review rather than silently invented.
+Ordinary explicit file import/export and optional user-initiated Google Drive backup remain advanced capabilities. They are not a reason to reintroduce historical migration machinery. Firestore schema evolution from this release onward is distinct from the excluded legacy migration.
 
-The feature should reuse the proven Wayfarer interaction pattern: extraction creates a structured draft, and only an explicitly approved draft is promoted into canonical state.
+## AI credentials and processing
 
-The AI provider must sit behind a replaceable server-side adapter.
+Use a replaceable server adapter, initially Gemini `gemini-3.5-flash-lite` with `gemini-3.8-flash` as bounded transient-failure fallback. Both calls use the same caller-selected credential. Verify model access with real test calls during implementation; published availability is not proof that a particular key has access.
 
-For the owner/admin account, Domain Expansion may use a privately configured server-side Gemini credential as an internal exception.
+Approved non-owner users deliberately configure their own Gemini key and acknowledge sending their submitted text to Google under that key's applicable terms. BYOK does not itself guarantee that Google will not use the data to improve products. Manual capture remains fully usable without AI.
 
-The accepted initial Gemini model policy is:
+Persist user keys encrypted server-side. Firestore stores ciphertext and non-secret metadata; the encryption key is deployment-managed and never exposed to client code. Keys can be replaced or removed and are never returned after submission. Rotation, authenticated encryption, redacted logging, and fail-closed behavior are required.
 
-- Primary: Gemini 3.5 Flash-Lite
-- Fallback: Gemini 3.8 Flash
+The explicitly configured owner UID may instead use a private server Gemini key, reflecting the owner's accepted data-handling preference. Never fall back to this key for another user, including another administrator.
 
-The provider/model boundary remains replaceable so this policy can change without altering the product contract.
+AI receives only the submitted text and minimal date/currency context, not the entire portfolio. Model output is validated data, not executable instructions. No tool execution, registrar mutation, general assistant scope, or writes before human approval. Input and output are not retained as chat history in this release.
 
-For other approved users, AI Quick Add is BYOK: the user must deliberately provide/configure their own supported AI provider credential before AI processing is enabled for their account. Their domain text must not be silently routed through the owner's Gemini project.
+## Automation and destructive behavior
 
-Provider credentials must never ship in the browser bundle.
+Build `/api/v1` plus an official CLI that consumes it. Document the same canonical data contract used by the UI. Tokens are named, expiring, revocable, and stored as non-recoverable verifiers; plaintext is shown only on creation.
 
-## Advanced Domain Data
+Scopes are independent:
 
-The richer original Flutter domain model should be restored where useful, while remaining subordinate to the simple UI.
+- `domains:read`: retrieve/search/export the caller's domains.
+- `domains:write`: create/edit/import/archive/unarchive; never permanent deletion.
+- `domains:delete`: explicit permanent removal.
 
-Advanced fields/workflows may include:
+Tokens do not authorize admin actions, token minting, credential access, or AI-provider spending. Trusted automated create/update requests may save immediately; the no-auto-save rule concerns AI Quick Add proposals. Archive is the normal reversible operation. CLI permanent deletion requires a deliberate command and interactive confirmation, or an explicit unattended confirmation flag. The web UI places it in the advanced danger surface.
 
-- DNS provider
-- Registration date
-- Registration cost
-- Separate billing date and expiration date
-- Ownership relationship
-- Lifecycle state
-- Auto-renew state
-- Notes
-- Reminder overrides
-- Archive state
-- Import/export and backup workflows
+## Integrations and portability
 
-The canonical advanced model includes:
+Keep Google Calendar, Tasks, Sheets, and explicit Drive backup optional and advanced. Request only relevant permissions when invoked; denied or expired Google consent cannot stop ordinary saves. Connecting Google must not replace the Firebase UID. Core domain data does not depend on external event creation succeeding.
 
-- domain name and normalized name
-- registrar
-- DNS provider
-- ownership relationship
-- lifecycle state
-- renewal intention
-- auto-renew state
-- registration date
-- billing date
-- expiration date
-- registration cost
-- renewal cost
-- currency
-- notes
-- archive state
-- reminder configuration/overrides
-- created/updated metadata
+Preserve ordinary file-based portability through the richer canonical schema, with honest format capabilities and no credential export. Reminder configuration and in-app urgency are required; optional Calendar/Tasks delivery must be explicit. Native Flutter notification parity and app-sent renewal email are not implied by restoring reminder fields.
 
-The architecture must not collapse these concepts merely because Quick Add does not show them.
+## Living model and workflow preferences
 
-Primary human surfaces should present only the subset needed for the current task. Advanced details belong behind deliberate expansion, detail/edit views, advanced settings, reports, or automation surfaces.
-
-## BYOK Credential Storage
-
-Approved non-owner users may configure their own supported AI provider key for AI Quick Add.
-
-The credential is persisted encrypted server-side.
-
-Requirements:
-
-- raw provider keys are accepted only over authenticated TLS requests
-- raw provider keys are never stored in Firestore plaintext
-- Firestore stores only ciphertext and non-secret metadata
-- encryption/decryption occurs server-side
-- the server-side encryption secret is deployment-managed and unavailable to client code
-- after setup, the raw key is not returned to the browser
-- users can replace or revoke their stored credential
-- provider failures must not expose raw upstream credentials or secrets
-
-The owner/admin's internal Gemini credential remains a separate server-configured exception and is not modeled as a normal user BYOK secret.
-
-## Accounts and Access
-
-Domain Expansion is not an open-signup product.
-
-Roles:
-
-### Applicant
-
-A person who requests access.
-
-An applicant has no access to Domain Expansion user data.
-
-### Approved User
-
-A user whose email has been approved by the administrator.
-
-Approved users may authenticate with passwordless email and access only their authorized data.
-
-User domain portfolios are private by default. Administrative authority over access requests and account approval does not automatically grant the administrator permission to read another user's domain records.
-
-### Administrator
-
-The product owner/administrator who can review access requests and approve or deny them.
-
-Initial access workflow:
-
-```text
-Visitor
-  ↓
-Request access
-  ↓
-Pending access request
-  ↓
-Admin review
-  ├── Deny → no account access
-  └── Approve
-         ↓
-      First passwordless sign-in link is sent
-         ↓
-      Approved user
-```
-
-Public request responses should not disclose sensitive account-state information unnecessarily.
-
-New access requests must appear in the admin interface and also trigger an external email notification to the administrator.
-
-Resend is the accepted delivery service for these administrator-facing access-request notifications. Firebase remains responsible for passwordless authentication emails.
-
-Authentication is separate from authorization. A Firebase Auth identity alone must not grant access to protected Firestore data unless the user is approved.
-
-## Authentication
-
-Use Firebase Authentication with passwordless email-link sign-in.
-
-Start with Firebase's own email delivery.
-
-A more heavily branded email delivery path through an external provider such as Resend is deferred unless Firebase's customization proves insufficient.
-
-Authentication and Google integrations are separate concerns. Signing into Domain Expansion must not require Google OAuth.
-
-## Persistence
-
-Firestore is the canonical database.
-
-The former Google Drive `appDataFolder` live-sync architecture is superseded as the primary persistence layer.
-
-Data should behave like normal authenticated cloud application data rather than a browser-local catalog whose cloud persistence depends on an ephemeral Google Drive OAuth token.
-
-## Legacy Google Drive Migration
-
-Existing AI Studio data stored in Google Drive should have a one-time migration path:
-
-1. User authenticates to the upgraded Domain Expansion.
-2. User deliberately connects/authorizes Google Drive for migration.
-3. Domain Expansion finds legacy `domain-expansion.json`.
-4. The app shows a migration/import preview.
-5. The user confirms.
-6. Data is normalized into the new canonical model and written to Firestore.
-7. Firestore becomes authoritative.
-
-After migration, Google Drive may remain available as an advanced backup/restore destination, but not as a second live database.
-
-## Google Integrations
-
-Google Calendar, Tasks, Sheets, and Drive are optional integrations.
-
-They should request Google authorization only when the user invokes a feature that needs the corresponding scope.
-
-Domain Expansion identity must not depend on those integrations.
-
-## Automation
-
-Automation is a first-class product surface.
-
-The application should expose a stable REST API rather than requiring agents or scripts to automate the browser UI or access Firestore directly.
-
-Initial automation contract:
-
-- REST API: required
-- Official CLI: required as a thin client over the REST API
-- Outbound webhooks: deferred until a concrete consumer/event workflow requires them
-
-Potential API surface:
-
-```text
-/api/v1/domains
-/api/v1/domains/:id
-/api/v1/import
-/api/v1/export
-```
-
-Exact routes remain subject to specification.
-
-### API Authentication
-
-Human browser sessions use Firebase Auth.
-
-Automation uses named, revocable personal access tokens managed from an advanced Developer settings surface.
-
-Expected token characteristics:
-
-- named
-- revocable
-- scoped
-- secret shown only when appropriate
-- stored as a non-recoverable verifier/hash rather than plaintext when feasible
-
-Initial conceptual scopes:
-
-- `domains:read`
-- `domains:write`
-
-Final scope granularity remains open.
-
-The CLI must use the same public API rather than becoming a second Firestore client.
-
-## Current Implementation Base
-
-`devin-thomas/domain-expansion-ai-studio`
-
-Current stack:
-
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- Firebase client SDK
-- Vercel deployment
-- Google OAuth integrations
-- Google Drive `appDataFolder` persistence
-- Google Calendar / Tasks / Sheets helpers
-- import/export utilities
-- responsive product showcase route
-
-Known cleanup items:
-
-- package name is still `react-example`
-- Firebase project configuration still reflects the AI Studio-generated project identity
-- Google authentication and Google Drive authorization are currently coupled
-- current persistence assumes localStorage plus Drive synchronization
-- current domain type is simpler than the desired canonical model
-
-## Original Flutter Reference
-
-`devin-thomas/domain-expansion`
-
-Useful donor concepts include:
-
-- separate billing and expiration dates
-- separate registration and renewal costs
-- DNS provider
-- archive semantics
-- explicit reminder semantics
-- richer import/export behavior
-- richer domain lifecycle vocabulary
-
-The Flutter application itself is not the forward implementation base.
-
-## Living System Model
+Format: Markdown/Mermaid, inherited workflow default. No external canvas or public sharing is required.
 
 ```mermaid
 flowchart TD
-    Visitor[Visitor] --> Request[Request Access]
-    Request --> Pending[(Pending Access Request)]
-    Admin[Admin] --> Pending
-    Pending -->|Approve| Approved[Approved User]
-    Pending -->|Deny| Denied[Denied]
-
-    Approved --> EmailLink[Firebase Passwordless Email Link]
-    EmailLink --> Session[Authenticated Web Session]
-
-    Session --> Quick[Structured Quick Add]
-    Session --> AI[AI Quick Add ✨]
-    Session --> Advanced[Advanced Workflows]
-    Session --> DevSettings[Developer Settings]
-
-    Quick --> Validation[Canonical Validation]
-    AI --> Extract[Server-side AI Extraction]
-    Extract --> Draft[Structured Draft]
-    Draft --> Review[Review / Correct / Approve]
-    Review --> Validation
-
-    Validation --> Firestore[(Firestore)]
-
-    DevSettings --> PAT[Scoped Personal Access Tokens]
-    PAT --> API[REST API v1]
-    CLI[Official CLI] --> API
-    Agents[Agents / Scripts] --> API
-    API --> Service[Domain Service]
-    Service --> Firestore
-
-    Advanced --> Google[Optional Google Integrations]
-    Google --> Calendar[Calendar / Tasks / Sheets]
-    Google --> Drive[Drive Backup / Legacy Migration]
+    Visitor[Visitor] --> Request[Request access]
+    Request --> Queue[Pending requests]
+    Queue --> Notice[Resend admin notification]
+    Admin[Admin review] --> Queue
+    Queue -->|Approve| Eligibility[Approved membership]
+    Eligibility --> Mail[Firebase sign-in email]
+    Mail --> Session[Verified browser identity]
+    Session --> Simple[Quick Add]
+    Session --> AI[AI Quick Add]
+    AI --> Adapter[Server Gemini adapter]
+    Vault[Encrypted user key or owner-only server key] --> Adapter
+    Adapter --> Draft[Editable draft cards]
+    Draft -->|Explicit approval| API[Authenticated API]
+    Simple --> API
+    CLI[CLI and agents with scoped tokens] --> API
+    API --> Guard[Membership, ownership, scope and validation]
+    Guard --> Store[(Per-user Firestore)]
+    Session --> Advanced[Advanced workflows]
+    Advanced --> API
+    Advanced --> Google[Optional Google authorization]
+    Google --> Integration[Calendar, Tasks, Sheets, explicit backup]
 ```
 
-## Deferred but Preserved
+## Closed discovery and remaining execution checks
 
-See `Ideas.md`.
+No product questions remain open for this pack. Token lifetimes, batch sizes, route naming, and defensive limits in SPEC are explicit adjustable implementation defaults, not extra feature commitments.
 
-## Open Questions
-
-Discovery remains open around:
-
-- personal access token scope granularity and automation safety
-- exact Firestore document layout and authorization enforcement
-- migration conflict/retry semantics from legacy Drive data
-- API destructive-operation behavior and rate/error boundaries
+Outstanding execution inputs are owner/admin destination configuration, Firebase project and credentials, sender/DNS permissions, API and encryption secrets, and real-device/provider verification. They block particular live acceptance checks, not writing or implementing the independent code. Never commit real credentials, invent passing tests, or label unprovisioned infrastructure as live.

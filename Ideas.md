@@ -1,37 +1,35 @@
 # Domain Expansion — Ideas and Deferred Scope
 
-Items here are valuable possibilities, not current requirements.
+Non-binding possibilities only. Current required behavior is in [Context.md](Context.md) and [SPEC.md](SPEC.md). Do not build an item merely because it appears here.
 
-## Branded Resend Authentication Email
+## Branded authentication email delivery
 
-If Firebase Authentication's built-in passwordless email customization is not visually sufficient, generate the Firebase sign-in link server-side and deliver a fully branded Domain Expansion email through Resend.
+Firebase sends passwordless links initially. Resend is already approved for administrator access-request alerts, but using it for authentication requires a separate explicit change if Firebase's templates or operating limits prove unsuitable. Firebase-generated links can still be retained if delivery changes. Do not silently switch the auth sender.
 
-Do not add this dependency merely for passwordless functionality; Firebase delivery is the initial path.
+## Outbound webhooks and additional automation clients
 
-## Outbound Webhooks
+User-configurable domain-change/renewal webhooks, an MCP server, and reusable agent skills may sit on the versioned API after concrete consumers exist. REST API and the official CLI are required now; these other clients are not. None should access Firestore directly or bypass scopes.
 
-Expose user-configurable outbound event webhooks for events such as domain created, updated, upcoming renewal, renewal intention changed, or access approved.
+## Registrar integrations and price discovery
 
-Deferred until a concrete event consumer requires them. The initial automation contract is REST API + CLI.
+Registrar/DNS synchronization, receipt discovery, renewal-price lookup, WHOIS/RDAP enrichment, and actual registrar auto-renew changes are separate future projects. The current application records user-provided information; it does not verify ownership or operate the registrar.
 
-## Registrar / DNS Provider Integrations
+## Richer AI source handling
 
-Automated registrar or DNS-provider synchronization could reduce manual entry, but should remain outside the current build unless promoted through later discovery.
+Attachments, screenshots, invoices, direct mailbox access, and specialized document extraction are not required for the initial text command box. Any later source-specific workflow must retain explicit reviewed approval and clear provider-data disclosure.
 
-## Automatic Renewal Price Discovery
+## Additional AI providers
 
-Use registrar APIs, receipts, or other integrations to help populate future renewal costs.
+Start with Gemini and the accepted model/fallback policy. The replaceable adapter should permit later providers without presenting a provider marketplace or arbitrary endpoint configuration now. Shared paid AI subsidies for other users require a new decision; BYOK and the exact owner exception are the current policy.
 
-Deferred because the current product prioritizes trustworthy explicit records and fast entry.
+## Additional reminder delivery
 
-## Richer AI Intake Sources
+App-sent renewal emails, web push, reliably scheduled browser-closed notifications, native notification parity, and automatic two-way Calendar synchronization may be evaluated separately. Reminder configuration, in-app urgency, and explicit existing Calendar/Tasks workflows are in the current specification. Resend's approved notification role must not grow silently.
 
-Extend AI Quick Add beyond typed natural language to optional pasted emails, screenshots, receipts, invoices, or registrar notices.
+## Support access and collaboration
 
-If promoted later, preserve the same extract → review → approve boundary rather than auto-saving model output.
+Explicit consent-based support access, team/shared portfolios, organizations, delegated portfolio roles, public portfolio sharing, and billing plans remain outside scope. Application administrators do not acquire portfolio access simply by managing invitations.
 
-## Additional Automation Clients
+## Expanded storage and offline behavior
 
-Thin clients, agent skills, MCP servers, or workflow integrations may be built over the versioned REST API once the API is stable.
-
-They should not bypass the canonical service/API rules by becoming direct Firestore clients.
+Full offline mutation queues, binary SQLite backup parity with Flutter, scheduled cloud backups, and cost-history analytics can be added only after a demonstrated need. The current cloud application has one authoritative Firestore store and explicit current-format portability, not a second live database.

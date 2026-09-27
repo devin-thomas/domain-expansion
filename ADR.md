@@ -1,5 +1,7 @@
 # Domain Expansion — Architecture Decision Record
 
+Discovery closed after five rounds and twenty resolved product questions. Historical rationale is preserved below. **ADR-020 supersedes ADR-007's legacy migration requirement.** Current behavior is summarized in Context and contracted in SPEC; historical text is not permission to restore excluded scope.
+
 ## ADR-001 - Continue from the AI Studio web repository
 
 **Status:** Accepted
@@ -62,7 +64,7 @@
 
 ## ADR-007 - Make Google Drive migration/backup optional rather than live persistence
 
-**Status:** Accepted
+**Status:** Superseded by ADR-020 for legacy migration. Historical decision retained; optional explicit backup is addressed by the current specification.
 
 **Decision:** Provide a deliberate one-time migration from legacy Google Drive `appDataFolder` data into Firestore. After migration, Drive may serve advanced backup/restore workflows but is not a live second database.
 
@@ -79,7 +81,6 @@
 **Rationale:** Natural-language capture can be faster than filling even a simplified form, and the project already has a proven extraction/review pattern from Wayfarer. AI uncertainty must not silently corrupt canonical domain records.
 
 **Consequences:** AI runs server-side behind a replaceable provider adapter. Structured-output validation is mandatory. Provider output is untrusted proposed data until approved.
-
 
 ## ADR-009 - Keep AI approval explicit and lightweight
 
@@ -121,7 +122,6 @@
 
 **Consequences:** The implementation needs a reliable admin-notification delivery path independent from the applicant-facing Firebase passwordless authentication email.
 
-
 ## ADR-013 - Use a lightweight Gemini extraction model with fallback
 
 **Status:** Accepted
@@ -131,7 +131,6 @@
 **Rationale:** Domain extraction is a small structured-inference task where latency and cost matter more than heavyweight reasoning.
 
 **Consequences:** Model selection is configuration rather than product logic. Fallback should be invoked only for appropriate provider failures, and all outputs remain subject to the same structured validation and explicit user approval.
-
 
 ## ADR-014 - Persist BYOK credentials encrypted server-side
 
@@ -172,3 +171,43 @@
 **Rationale:** A rich data model improves automation, reporting, migration, and future integrations, while the AI Studio version proved that exposing every field during normal capture harms usability.
 
 **Consequences:** UI complexity is intentionally lower than schema complexity. Quick Add remains sparse, advanced fields are gated, and API/CLI consumers may access the richer model without forcing those fields into primary human workflows.
+
+## ADR-018 - Separate permanent-delete authority from ordinary writes
+
+**Status:** Accepted
+
+**Decision:** Personal access tokens have independent `domains:read`, `domains:write`, and `domains:delete` scopes. Read covers retrieval/search/export; write covers create/edit/import/archive/unarchive; permanent removal requires delete.
+
+**Rationale:** The owner explicitly approved giving automation useful read/write access without the power to permanently erase records.
+
+**Consequences:** Enforce scopes at every endpoint, including bulk/import alternatives. Default token creation does not select delete. Tokens cannot mint other credentials, change membership, or obtain AI provider secrets.
+
+## ADR-019 - Use strict per-user Firestore storage
+
+**Status:** Accepted
+
+**Decision:** Store portfolio records under `users/{uid}/domains/{domainId}` with user-scoped settings and tokens, plus separate protected membership/request records. BYOK material is server-only.
+
+**Rationale:** Ownership should be structural rather than depending on every query remembering an owner filter on a shared domain collection.
+
+**Consequences:** Derive paths from verified identity. The common server API checks current membership, ownership, and scopes; deny direct client database access in the initial API-first implementation. Admin SDK access bypasses Firestore client rules and requires independent server checks. Application admin isolation does not claim that privileged infrastructure operators are cryptographically unable to access data.
+
+## ADR-020 - Exclude legacy Google Drive migration
+
+**Status:** Accepted; supersedes ADR-007's legacy migration requirement and earlier related open questions.
+
+**Decision:** Do not build migration from the prototype's Google Drive `appDataFolder`, a first-login import wizard, or historical reconciliation. New approved accounts begin with an empty Firestore portfolio. Keep ordinary explicit current-format import/export and optional backup separate from this exclusion.
+
+**Rationale:** In final discovery the owner reported no known Drive backup requiring migration and explicitly rejected work justified only by a hypothetical large installed user base.
+
+**Consequences:** No migration ticket or release dependency is allowed. Remove live Drive synchronization without scanning or deleting legacy external files. The old Flutter code remains a reference for semantics only. Future schema evolution of the new Firestore records is still normal engineering work.
+
+## ADR-021 - Prefer archive and make permanent deletion deliberate
+
+**Status:** Accepted
+
+**Decision:** Archive/unarchive is ordinary reversible operation. Permanent deletion uses the separate scope and an explicit destructive operation; the interactive CLI confirms it, unattended scripts supply an explicit confirmation flag, and the web UI gates it in an advanced danger surface.
+
+**Rationale:** Routine automation should retain useful history and make mistakes recoverable without preventing deliberate removal.
+
+**Consequences:** No generic write, import replacement, reset action, or AI path may secretly act as collection deletion. Cancellation changes nothing. Tests must prove that read/write tokens cannot permanently delete by any exposed route.
