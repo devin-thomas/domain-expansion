@@ -16,6 +16,7 @@ import {
 import { authenticate, bootstrapOwner, issuePat, memberPath, publicToken, requireRecent, requireSession, signTestToken, tokenPath, type MemberDoc, type TokenDoc } from './auth';
 import type { Config } from './config';
 import { deleteCredential, getCredentialStatus, putCredential } from './credentials';
+import { sha256Hex } from './crypto';
 import { extractDrafts } from './extract';
 import type { AiPort, IdentityDirectory, LogSink, MailPort } from './ports';
 import {
@@ -133,6 +134,7 @@ async function dispatch(req: IncomingMessage & { body?: unknown }, url: URL, dep
   }
 
   const actor = await authenticate(typeof req.headers.authorization === 'string' ? req.headers.authorization : undefined, deps.store, deps.config, now);
+  await consumeApiRate(deps.store, actor.uid, method === 'GET' ? 'read' : 'write', now);
   if (method === 'GET' && path === '/api/session') {
     return {
       status: 200,
@@ -194,6 +196,24 @@ async function dispatch(req: IncomingMessage & { body?: unknown }, url: URL, dep
   }
   if (method === 'POST' && path === '/api/ai/extract') return extractDrafts(deps.store, deps.config, deps.ai, actor, await readBody(req), now);
   throw new ApiError(404, 'not_found', 'Not found');
+}
+
+async function consumeApiRate(store: DocStore, uid: string, kind: 'read' | 'write', now: Date): Promise<void> {
+  const limit = kind === 'read' ? 120 : 60;
+  const windowMs = 60_000;
+  const path = `rateLimits/${sha256Hex(`api:${uid}:${kind}`)}`;
+  await store.transaction(async (tx) => {
+    const current = await tx.get<{ count: number; windowStart: number }>(path);
+    if (!current || now.getTime() - current.windowStart >= windowMs) {
+      tx.set(path, { count: 1, windowStart: now.getTime() });
+      return;
+    }
+    if (current.count >= limit) {
+      const retryAfter = Math.max(1, Math.ceil((current.windowStart + windowMs - now.getTime()) / 1000));
+      throw new ApiError(429, 'rate_limited', 'Too many requests. Try again later.', { retryable: true, extra: { retryAfter } });
+    }
+    tx.set(path, { count: current.count + 1, windowStart: current.windowStart });
+  });
 }
 
 async function testSession(req: IncomingMessage & { body?: unknown }, deps: AppDeps, now: Date) {

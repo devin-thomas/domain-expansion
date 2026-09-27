@@ -187,7 +187,12 @@ async function markNotification(store: DocStore, current: NotificationDoc, statu
 
 export async function listRequests(store: DocStore, actor: Actor): Promise<{ status: number; body: unknown }> {
   requireAdmin(actor);
-  const rows = await store.list<AccessRequest>('accessRequests/');
+  const [rows, notifications] = await Promise.all([store.list<AccessRequest>('accessRequests/'), store.list<NotificationDoc>('notifications/')]);
+  const latestNotification = new Map<string, NotificationDoc>();
+  for (const { data } of notifications) {
+    const current = latestNotification.get(data.requestId);
+    if (!current || current.createdAt < data.createdAt) latestNotification.set(data.requestId, data);
+  }
   const requests = rows
     .map((row) => row.data)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -200,6 +205,8 @@ export async function listRequests(store: DocStore, actor: Actor): Promise<{ sta
       updatedAt: request.updatedAt,
       mailState: request.mailState,
       mailError: request.mailError,
+      notificationId: latestNotification.get(request.id)?.id ?? null,
+      notificationStatus: latestNotification.get(request.id)?.status ?? null,
     }));
   return { status: 200, body: { requests, pending: requests.filter((request) => request.status === 'pending').length } };
 }
@@ -308,4 +315,3 @@ export async function resendApprovalMail(store: DocStore, config: Config, mail: 
   });
   return { status: 200, body: { mailState: sent.ok ? 'sent' : 'failed' } };
 }
-

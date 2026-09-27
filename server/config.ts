@@ -34,8 +34,12 @@ function flag(value: string | undefined): boolean {
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const environmentName = env.APP_ENV || env.NODE_ENV || 'development';
   const testRequested = flag(env.DOMAIN_EXPANSION_TEST_AUTH);
-  if (testRequested && environmentName === 'production') {
-    throw new Error('DOMAIN_EXPANSION_TEST_AUTH cannot be enabled in production');
+  const deployed = env.NODE_ENV === 'production' || Boolean(env.VERCEL_ENV);
+  if (testRequested && (environmentName === 'production' || deployed)) {
+    throw new Error('DOMAIN_EXPANSION_TEST_AUTH cannot be enabled in a deployed environment');
+  }
+  if ((environmentName === 'production' || deployed) && env.DATA_STORE !== 'firestore') {
+    throw new Error('Production requires DATA_STORE=firestore');
   }
   const appOrigin = (env.APP_ORIGIN || 'http://localhost:3000').replace(/\/$/, '');
   const allowed = (env.ALLOWED_ORIGINS || `${appOrigin},http://127.0.0.1:3000,https://domains.devthomas.site`)

@@ -403,14 +403,18 @@ export async function updateIntegration(store: DocStore, actor: Actor, id: strin
   });
 }
 
-function cleanIntegration(patch: Partial<DomainRecord['integration']>): DomainRecord['integration'] {
-  const value = (input: unknown): string | null => (input === null || input === undefined || input === '' ? null : String(input).slice(0, 300));
-  return {
-    calendarEventId: value(patch.calendarEventId),
-    tasksTaskId: value(patch.tasksTaskId),
-    calendarReconcileKey: value(patch.calendarReconcileKey),
-    tasksReconcileKey: value(patch.tasksReconcileKey),
-  };
+function cleanIntegration(patch: Partial<DomainRecord['integration']>): Partial<DomainRecord['integration']> {
+  const cleaned: Partial<DomainRecord['integration']> = {};
+  for (const key of ['calendarEventId', 'tasksTaskId', 'calendarReconcileKey', 'tasksReconcileKey'] as const) {
+    if (Object.hasOwn(patch, key)) {
+      const value = patch[key];
+      if (value !== null && (typeof value !== 'string' || value.length > 300)) {
+        throw new ApiError(422, 'invalid_integration', `${key} must be a string or null`);
+      }
+      cleaned[key] = value === '' ? null : value;
+    }
+  }
+  return cleaned;
 }
 
 export async function previewImport(store: DocStore, actor: Actor, body: unknown, now: Date): Promise<HandlerResult> {
@@ -632,4 +636,3 @@ export async function userToday(store: DocStore, actor: Actor, now: Date): Promi
   const { localDateInTimeZone } = await import('../shared/domain');
   return localDateInTimeZone(settings.timezone, now);
 }
-
