@@ -2,8 +2,8 @@
 
 ## Discovery Status
 
-- Grill-to-Build discovery round: 3 complete
-- Product questions answered: 12
+- Grill-to-Build discovery round: 4 complete
+- Product questions answered: 16
 - Living model format: Markdown/Mermaid (workflow default because no explicit preference was supplied)
 - Specification status: not yet created; discovery is still active
 - Tickets status: not yet created
@@ -125,7 +125,48 @@ Advanced fields/workflows may include:
 - Archive state
 - Import/export and backup workflows
 
-The exact advanced-field set remains subject to specification, but the architecture should not collapse these concepts merely because Quick Add does not show them.
+The canonical advanced model includes:
+
+- domain name and normalized name
+- registrar
+- DNS provider
+- ownership relationship
+- lifecycle state
+- renewal intention
+- auto-renew state
+- registration date
+- billing date
+- expiration date
+- registration cost
+- renewal cost
+- currency
+- notes
+- archive state
+- reminder configuration/overrides
+- created/updated metadata
+
+The architecture must not collapse these concepts merely because Quick Add does not show them.
+
+Primary human surfaces should present only the subset needed for the current task. Advanced details belong behind deliberate expansion, detail/edit views, advanced settings, reports, or automation surfaces.
+
+## BYOK Credential Storage
+
+Approved non-owner users may configure their own supported AI provider key for AI Quick Add.
+
+The credential is persisted encrypted server-side.
+
+Requirements:
+
+- raw provider keys are accepted only over authenticated TLS requests
+- raw provider keys are never stored in Firestore plaintext
+- Firestore stores only ciphertext and non-secret metadata
+- encryption/decryption occurs server-side
+- the server-side encryption secret is deployment-managed and unavailable to client code
+- after setup, the raw key is not returned to the browser
+- users can replace or revoke their stored credential
+- provider failures must not expose raw upstream credentials or secrets
+
+The owner/admin's internal Gemini credential remains a separate server-configured exception and is not modeled as a normal user BYOK secret.
 
 ## Accounts and Access
 
@@ -144,6 +185,8 @@ An applicant has no access to Domain Expansion user data.
 A user whose email has been approved by the administrator.
 
 Approved users may authenticate with passwordless email and access only their authorized data.
+
+User domain portfolios are private by default. Administrative authority over access requests and account approval does not automatically grant the administrator permission to read another user's domain records.
 
 ### Administrator
 
@@ -170,6 +213,8 @@ Admin review
 Public request responses should not disclose sensitive account-state information unnecessarily.
 
 New access requests must appear in the admin interface and also trigger an external email notification to the administrator.
+
+Resend is the accepted delivery service for these administrator-facing access-request notifications. Firebase remains responsible for passwordless authentication emails.
 
 Authentication is separate from authorization. A Firebase Auth identity alone must not grant access to protected Firestore data unless the user is approved.
 
@@ -347,8 +392,7 @@ See `Ideas.md`.
 
 Discovery remains open around:
 
-- BYOK credential storage and lifecycle
 - personal access token scope granularity and automation safety
-- exact multi-user Firestore ownership/isolation rules
-- canonical advanced-domain schema and migration mapping
-- admin-notification delivery implementation
+- exact Firestore document layout and authorization enforcement
+- migration conflict/retry semantics from legacy Drive data
+- API destructive-operation behavior and rate/error boundaries
