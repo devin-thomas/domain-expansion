@@ -96,6 +96,13 @@ The AI provider must sit behind a replaceable server-side adapter.
 
 For the owner/admin account, Domain Expansion may use a privately configured server-side Gemini credential as an internal exception.
 
+The accepted initial Gemini model policy is:
+
+- Primary: Gemini 3.5 Flash-Lite
+- Fallback: Gemini 3.8 Flash
+
+The provider/model boundary remains replaceable so this policy can change without altering the product contract.
+
 For other approved users, AI Quick Add is BYOK: the user must deliberately provide/configure their own supported AI provider credential before AI processing is enabled for their account. Their domain text must not be silently routed through the owner's Gemini project.
 
 Provider credentials must never ship in the browser bundle.
