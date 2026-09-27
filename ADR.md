@@ -120,3 +120,14 @@
 **Rationale:** The gated access model is intended to surface unexpected product interest without requiring the administrator to repeatedly check an admin page.
 
 **Consequences:** The implementation needs a reliable admin-notification delivery path independent from the applicant-facing Firebase passwordless authentication email.
+
+
+## ADR-013 - Use a lightweight Gemini extraction model with fallback
+
+**Status:** Accepted
+
+**Decision:** AI Quick Add initially uses Gemini 3.5 Flash-Lite as the primary extraction model and Gemini 3.8 Flash as fallback, behind the replaceable server-side provider adapter.
+
+**Rationale:** Domain extraction is a small structured-inference task where latency and cost matter more than heavyweight reasoning.
+
+**Consequences:** Model selection is configuration rather than product logic. Fallback should be invoked only for appropriate provider failures, and all outputs remain subject to the same structured validation and explicit user approval.
