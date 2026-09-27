@@ -7,6 +7,7 @@ import {
   effectiveBillingDate,
   formatMinor,
   parseMoneyInput,
+  reminderAnchor,
   urgencyFor,
   type AppSettings,
   type Currency,
@@ -18,6 +19,18 @@ import { backupToDrive, connectGoogle, createCalendarEvent, createTask, exportSh
 
 type View = 'dashboard' | 'domains' | 'settings' | 'admin';
 type DomainView = DomainRecord & { id: string; revision: number; normalizedName: string };
+
+async function loadAllDomains(): Promise<DomainView[]> {
+  const records: DomainView[] = [];
+  let cursor: string | null = null;
+  do {
+    const suffix: string = cursor ? `&cursor=${encodeURIComponent(cursor)}` : '';
+    const page = await api<{ records: DomainView[]; nextCursor: string | null }>(`/api/v1/domains?limit=100&archived=all${suffix}`);
+    records.push(...page.data.records);
+    cursor = page.data.nextCursor;
+  } while (cursor);
+  return records;
+}
 
 const TEST_AUTH = import.meta.env.VITE_TEST_AUTH === '1';
 
@@ -38,6 +51,7 @@ function Product() {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [editing, setEditing] = useState<DomainView | null>(null);
   const [query, setQuery] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
   const generation = useRef(0);
 
   const clearPrivate = useCallback(() => {
@@ -53,13 +67,13 @@ function Product() {
   const load = useCallback(async (uid: string) => {
     const ticket = ++generation.current;
     const [list, sum, prefs, session] = await Promise.all([
-      api<{ records: DomainView[] }>('/api/v1/domains?limit=100&archived=all'),
+      loadAllDomains(),
       api<Summary>('/api/v1/summary'),
       api<AppSettings>('/api/v1/settings'),
       api<{ role: 'member' | 'admin'; email: string | null; uid: string }>('/api/session'),
     ]);
     if (ticket !== generation.current || session.data.uid !== uid) return;
-    setDomains(list.data.records);
+    setDomains(list);
     setSummary(sum.data);
     setSettings(prefs.data);
     setUser({ uid: session.data.uid, email: session.data.email, role: session.data.role });
@@ -94,11 +108,12 @@ function Product() {
         setReady(true);
         return;
       }
-      setMemoryToken(await firebaseUser.getIdToken());
       try {
+        setMemoryToken(await firebaseUser.getIdToken());
         await load(firebaseUser.uid);
       } catch (error) {
         setNotice(error instanceof Error ? error.message : 'This account cannot open a portfolio yet.');
+        await signOutSession();
         setUser(null);
       } finally {
         setReady(true);
@@ -127,9 +142,9 @@ function Product() {
   }} />;
 
   const visible = domains.filter((domain) => {
-    if (domain.isArchived) return false;
+    if (domain.isArchived !== showArchived) return false;
     if (!query.trim()) return true;
-    return domain.name.includes(query.trim().toLowerCase());
+    return domain.name.toLowerCase().includes(query.trim().toLowerCase());
   });
 
   return (
@@ -171,6 +186,7 @@ function Product() {
             <label className="mb-4 block text-sm text-zinc-300">Search
               <input className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2" value={query} onChange={(event) => setQuery(event.target.value)} />
             </label>
+            <label className="mb-4 flex items-center gap-2 text-sm text-zinc-300"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} /> View archived domains</label>
             <ul className="divide-y divide-zinc-800 rounded-lg border border-zinc-800">
               {visible.map((domain) => (
                 <li key={domain.id}>
@@ -190,6 +206,7 @@ function Product() {
         {view === 'admin' && user.role === 'admin' ? <Admin onChanged={refresh} /> : null}
       </main>
       {captureOpen ? (
+        <div key={editing?.id ?? 'new'}>
         <CaptureDialog
           settings={settings}
           initial={editing}
@@ -197,13 +214,18 @@ function Product() {
           onSaved={async (message) => {
             setNotice(message);
             setCaptureOpen(false);
-            await refresh();
+            try {
+              await refresh();
+            } catch (error) {
+              setNotice(`${message}. The latest data could not be reloaded: ${error instanceof Error ? error.message : 'try refreshing the page'}`);
+            }
           }}
           onOpenExisting={async (id) => {
             const match = domains.find((domain) => domain.id === id) || (await api<DomainView>(`/api/v1/domains/${id}`)).data;
             setEditing(match);
           }}
         />
+        </div>
       ) : null}
     </div>
   );
@@ -277,8 +299,13 @@ function Gate({ onTestUser }: { onTestUser: () => Promise<void> }) {
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   async function submit(path: string, body: unknown) {
-    const response = await api<{ message: string }>(path, { method: 'POST', body });
-    setMessage(response.data.message);
+    setMessage(null);
+    try {
+      const response = await api<{ message: string }>(path, { method: 'POST', body });
+      setMessage(response.data.message);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'The request could not be sent. Try again.');
+    }
   }
   return (
     <main className="mx-auto grid min-h-screen max-w-lg content-center gap-8 px-4">
@@ -315,6 +342,7 @@ function AuthFinish() {
   const [done, setDone] = useState(false);
   useEffect(() => {
     if (!linkInLocation()) {
+      window.history.replaceState({}, document.title, '/auth/finish');
       setError('This page completes an email sign-in link. Request a new link if this one expired.');
       return;
     }
@@ -331,7 +359,7 @@ function AuthFinish() {
       {done ? <p>Signed in. <a className="text-indigo-300" href="/">Continue</a></p> : null}
       {error ? <p role="alert">{error} <a className="text-indigo-300" href="/">Back</a></p> : null}
       {!done && linkInLocation() && !storedSignInEmail() ? (
-        <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); completeEmailLink(email).then(() => setDone(true)).catch(() => setError('Check the email address and try again, or request a new link.')); }}>
+        <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); completeEmailLink(email).then(() => setDone(true)).catch(() => { window.history.replaceState({}, document.title, '/auth/finish'); setError('Check the email address and request a new link.'); }); }}>
           <label>Confirm the email that received the link
             <input className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
           </label>
@@ -424,9 +452,13 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
   async function remove() {
     if (!initial) return;
     if (deleteName !== initial.name) return;
-    await api(`/api/v1/domains/${initial.id}`, { method: 'DELETE', ifMatch: `"${initial.revision}"` });
-    dirty.current = false;
-    await onSaved('Deleted');
+    try {
+      await api(`/api/v1/domains/${initial.id}`, { method: 'DELETE', ifMatch: `"${initial.revision}"` });
+      dirty.current = false;
+      await onSaved('Deleted');
+    } catch (error) {
+      setUnsaved(error instanceof Error ? `${error.message} Nothing was deleted.` : 'Nothing was deleted.');
+    }
   }
 
   function requestClose() {
@@ -526,6 +558,7 @@ interface ClientDraft {
   warnings: string[];
   proposals: { field: string; reason: string }[];
   excluded?: boolean;
+  costInput?: string;
 }
 
 function AiCapture({ settings, onSaved, onOpenExisting }: { settings: AppSettings; onSaved: (message: string) => Promise<void>; onOpenExisting: (id: string) => Promise<void> }) {
@@ -536,6 +569,9 @@ function AiCapture({ settings, onSaved, onOpenExisting }: { settings: AppSetting
   const requestGen = useRef(0);
   const idempotencyKey = useRef(crypto.randomUUID());
   const selected = drafts.filter((draft) => !draft.excluded && draft.name && (draft.expirationDate || draft.billingDate));
+  function editDraft(index: number, patch: Partial<ClientDraft>) {
+    setDrafts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
+  }
 
   async function extract(event: React.FormEvent) {
     event.preventDefault();
@@ -566,7 +602,7 @@ function AiCapture({ settings, onSaved, onOpenExisting }: { settings: AppSetting
             registrar: draft.registrar,
             expirationDate: draft.expirationDate,
             billingDate: draft.billingDate,
-            renewalCostMinor: draft.renewalCostMinor,
+            renewalCostMinor: draft.costInput === undefined ? draft.renewalCostMinor : parseMoneyInput(draft.costInput, (draft.currency ?? draft.suggestedCurrency ?? settings.defaultCurrency) as Currency),
             currency: draft.currency ?? draft.suggestedCurrency ?? settings.defaultCurrency,
             renewalIntent: draft.renewalIntent ?? 'renew',
           })),
@@ -601,6 +637,14 @@ function AiCapture({ settings, onSaved, onOpenExisting }: { settings: AppSetting
           {draft.proposals.map((proposal) => <p key={proposal.field} className="text-amber-200">{proposal.reason}</p>)}
           {draft.warnings.map((warning) => <p key={warning} className="text-rose-300">{warning}</p>)}
           <label className="mt-2 block">Domain<input className="field" value={draft.name ?? ''} onChange={(event) => setDrafts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, name: event.target.value } : row))} /></label>
+          <label className="mt-2 block">Registrar<input className="field" value={draft.registrar ?? ''} onChange={(event) => editDraft(index, { registrar: event.target.value || null })} /></label>
+          <label className="mt-2 block">Expiration date<input className="field" type="date" value={draft.expirationDate ?? ''} onChange={(event) => editDraft(index, { expirationDate: event.target.value || null })} /></label>
+          <label className="mt-2 block">Billing date<input className="field" type="date" value={draft.billingDate ?? ''} onChange={(event) => editDraft(index, { billingDate: event.target.value || null })} /></label>
+          <div className="mt-2 grid grid-cols-[1fr_8rem] gap-2">
+            <label>Renewal cost<input className="field" inputMode="decimal" value={draft.costInput ?? minorToField(draft.renewalCostMinor, (draft.currency ?? draft.suggestedCurrency ?? settings.defaultCurrency) as Currency)} onChange={(event) => editDraft(index, { costInput: event.target.value })} /></label>
+            <label>Currency<select className="field" value={draft.currency ?? draft.suggestedCurrency ?? settings.defaultCurrency} onChange={(event) => editDraft(index, { currency: event.target.value })}>{CURRENCIES.map((item) => <option key={item}>{item}</option>)}</select></label>
+          </div>
+          <label className="mt-2 block">Renewal intention<select className="field" value={draft.renewalIntent ?? 'renew'} onChange={(event) => editDraft(index, { renewalIntent: event.target.value as RenewalIntent })}><option value="renew">Renew</option><option value="let_expire">Let expire</option></select></label>
         </article>
       ))}
       {error ? <p role="alert" className="text-sm text-rose-300">{error}</p> : null}
@@ -618,39 +662,90 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
   const [plaintext, setPlaintext] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [integrationNote, setIntegrationNote] = useState<string | null>(null);
+  const [credential, setCredential] = useState<{ configured: boolean; source: string | null; revision?: number } | null>(null);
+  const [tokens, setTokens] = useState<{ id: string; name: string; scopes: string[]; expiresAt: string; revokedAt: string | null }[]>([]);
+  const [tokenScopes, setTokenScopes] = useState<string[]>(['domains:read', 'domains:write']);
+  const [tokenDays, setTokenDays] = useState(90);
+  const [selectedDomainId, setSelectedDomainId] = useState('');
+
+  useEffect(() => {
+    void Promise.all([
+      api<typeof credential>('/api/credentials/gemini'),
+      api<{ tokens: typeof tokens }>('/api/tokens'),
+    ]).then(([status, list]) => {
+      setCredential(status.data);
+      setTokens(list.data.tokens);
+    }).catch((error) => setMessage(error instanceof Error ? error.message : 'Settings could not be loaded.'));
+  }, []);
 
   async function saveSettings(event: React.FormEvent) {
     event.preventDefault();
-    await api('/api/v1/settings', { method: 'PUT', body: { ...settings, defaultCurrency: currency, timezone } });
-    setMessage('Settings saved');
-    await onChanged();
+    try {
+      await api('/api/v1/settings', { method: 'PUT', body: { ...settings, defaultCurrency: currency, timezone } });
+      setMessage('Settings saved');
+      await onChanged();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Settings were not saved.');
+    }
   }
 
   async function saveKey(event: React.FormEvent) {
     event.preventDefault();
-    await api('/api/credentials/gemini', { method: 'PUT', body: { apiKey: key, consent, consentVersion: '2026-09-26' } });
-    setKey('');
-    setMessage('Key stored. It will not be shown again.');
+    try {
+      const response = await api<NonNullable<typeof credential>>('/api/credentials/gemini', { method: 'PUT', ifMatch: credential?.source === 'byok' && credential.revision ? `"${credential.revision}"` : undefined, body: { apiKey: key, consent, consentVersion: '2026-09-26' } });
+      setKey('');
+      setCredential(response.data);
+      setMessage('Key stored. It will not be shown again.');
+    } catch (error) {
+      setKey('');
+      setMessage(error instanceof Error ? error.message : 'Key was not stored.');
+    }
+  }
+
+  async function removeKey() {
+    try {
+      const response = await api<NonNullable<typeof credential>>('/api/credentials/gemini', { method: 'DELETE' });
+      setCredential(response.data);
+      setMessage('Stored key removed.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Key was not removed.');
+    }
   }
 
   async function createToken(event: React.FormEvent) {
     event.preventDefault();
-    const response = await api<{ token: string }>('/api/tokens', { method: 'POST', body: { name: tokenName, scopes: ['domains:read', 'domains:write'], expiresInDays: 90 } });
-    setPlaintext(response.data.token);
+    try {
+      const response = await api<{ token: string; tokenRecord: typeof tokens[number] }>('/api/tokens', { method: 'POST', body: { name: tokenName, scopes: tokenScopes, expiresInDays: tokenDays } });
+      setPlaintext(response.data.token);
+      setTokens((rows) => [...rows, response.data.tokenRecord]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Token was not created.');
+    }
+  }
+
+  async function revokeToken(id: string) {
+    try {
+      await api(`/api/tokens/${id}/revoke`, { method: 'POST', body: {} });
+      setTokens((rows) => rows.map((row) => row.id === id ? { ...row, revokedAt: new Date().toISOString() } : row));
+      setPlaintext(null);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Token was not revoked.');
+    }
   }
 
   async function runIntegration(action: 'calendar' | 'tasks' | 'sheets' | 'driveFile') {
-    const domain = domains.find((item) => !item.isArchived);
+    const domain = domains.find((item) => item.id === selectedDomainId && !item.isArchived);
     if (!domain && action !== 'sheets' && action !== 'driveFile') {
-      setIntegrationNote('Add a domain before creating an external reminder.');
+      setIntegrationNote('Choose a domain before creating an external reminder.');
       return;
     }
     try {
       const accessToken = await connectGoogle(action);
       if (action === 'calendar' && domain) {
-        const date = effectiveBillingDate(domain);
+        const date = reminderAnchor(domain);
         if (!date) throw new Error('That domain has no effective date.');
-        const result = await createCalendarEvent(accessToken, domain.name, date, `${domain.id}:${date}`);
+        const title = domain.renewalIntent === 'let_expire' ? `Review expiration of ${domain.name}` : `Renew ${domain.name}`;
+        const result = await createCalendarEvent(accessToken, title, date, `${domain.id}:${date}`);
         if (result.uncertain) {
           setIntegrationNote('Could not check for an existing event. Nothing was created. Try again when Calendar responds.');
           return;
@@ -658,9 +753,10 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
         await api(`/api/v1/domains/${domain.id}/integrations`, { method: 'POST', ifMatch: `"${domain.revision}"`, body: { calendarEventId: result.id, calendarReconcileKey: `${domain.id}:${date}` } });
         setIntegrationNote(result.alreadyExisted ? 'Matched the existing calendar event.' : 'Calendar event created. The domain was already saved.');
       } else if (action === 'tasks' && domain) {
-        const date = effectiveBillingDate(domain);
+        const date = reminderAnchor(domain);
         if (!date) throw new Error('That domain has no effective date.');
-        const result = await createTask(accessToken, domain.name, date, `${domain.id}:${date}`);
+        const title = domain.renewalIntent === 'let_expire' ? `Review expiration of ${domain.name}` : `Renew ${domain.name}`;
+        const result = await createTask(accessToken, title, date, `${domain.id}:${date}`);
         if (result.uncertain) {
           setIntegrationNote('Could not check for an existing task. Nothing was created.');
           return;
@@ -691,22 +787,28 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
       </form>
       <form className="grid gap-3" onSubmit={saveKey}>
         <h2 className="text-lg font-semibold">Gemini key</h2>
+        <p className="text-sm text-zinc-400">{credential ? credential.configured ? `Configured (${credential.source})` : 'No key configured' : 'Checking key status…'}</p>
         <p className="text-sm text-zinc-400">AI Quick Add sends the text you submit to Google using your key. Domain Expansion processes that key and text on the server. Google’s terms and billing apply. This is not a promise that Google will not use the data to improve products. Manual capture does not need a key.</p>
         <label className="text-sm"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /> I understand and want to store a key</label>
         <input className="field" type="password" autoComplete="off" value={key} onChange={(event) => setKey(event.target.value)} placeholder="Paste key" />
         <button className="min-h-11 rounded-md border border-zinc-700" type="submit">Save key</button>
+        {credential?.source === 'byok' ? <button className="min-h-11 rounded-md border border-rose-800 text-rose-300" type="button" onClick={() => void removeKey()}>Remove stored key</button> : null}
       </form>
       <form className="grid gap-3" onSubmit={createToken}>
         <h2 className="text-lg font-semibold">Developer tokens</h2>
-        <p className="text-sm text-zinc-400">A new token includes read and write, not delete. The secret is shown once.</p>
+        <p className="text-sm text-zinc-400">Choose each permission independently. The secret is shown once.</p>
         <input className="field" value={tokenName} onChange={(event) => setTokenName(event.target.value)} />
+        <div className="flex flex-wrap gap-4 text-sm">{['domains:read', 'domains:write', 'domains:delete'].map((scope) => <label key={scope}><input type="checkbox" checked={tokenScopes.includes(scope)} onChange={(event) => setTokenScopes((current) => event.target.checked ? [...current, scope] : current.filter((item) => item !== scope))} /> {scope}</label>)}</div>
+        <label className="text-sm">Expires in days<input className="field" type="number" min="1" max="365" value={tokenDays} onChange={(event) => setTokenDays(Number(event.target.value))} /></label>
         <button className="min-h-11 rounded-md border border-zinc-700" type="submit">Create token</button>
         {plaintext ? <p className="break-all rounded-md bg-zinc-900 p-3 font-mono text-xs" role="status">{plaintext}</p> : null}
+        <ul className="space-y-2 text-sm">{tokens.map((token) => <li key={token.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-800 p-2"><span>{token.name} · {token.scopes.join(', ')} · expires {token.expiresAt.slice(0, 10)}{token.revokedAt ? ' · revoked' : ''}</span>{!token.revokedAt ? <button type="button" className="text-rose-300" onClick={() => void revokeToken(token.id)}>Revoke</button> : null}</li>)}</ul>
       </form>
-      <Transfer domains={domains} />
+      <Transfer domains={domains} onChanged={onChanged} />
       <section className="grid gap-3">
         <h2 className="text-lg font-semibold">Google integrations</h2>
         <p className="text-sm text-zinc-400">{googleConfigured() ? 'Connect Google only for the action you choose. This does not change your Domain Expansion sign-in.' : 'Google integrations are optional and currently not configured. Saving domains does not require them.'}</p>
+        <label className="text-sm">Domain for Calendar or Tasks<select className="field" value={selectedDomainId} onChange={(event) => setSelectedDomainId(event.target.value)}><option value="">Choose a domain</option>{domains.filter((domain) => !domain.isArchived).map((domain) => <option key={domain.id} value={domain.id}>{domain.name}</option>)}</select></label>
         <div className="flex flex-wrap gap-2">
           <button className="min-h-11 rounded-md border border-zinc-700 px-3" onClick={() => void runIntegration('calendar')}>Calendar</button>
           <button className="min-h-11 rounded-md border border-zinc-700 px-3" onClick={() => void runIntegration('tasks')}>Tasks</button>
@@ -720,28 +822,68 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
   );
 }
 
-function Transfer({ domains }: { domains: DomainView[] }) {
-  const [preview, setPreview] = useState<{ previewId: string; contentHash: string; rows: { name: string; action: string }[] } | null>(null);
+function Transfer({ domains, onChanged }: { domains: DomainView[]; onChanged: () => Promise<void> }) {
+  const [preview, setPreview] = useState<{ previewId: string; contentHash: string; rows: { name: string; action: string; currencyClearsCosts: boolean; issues: string[] }[]; warnings: string[]; currencyAcknowledgementRequired: boolean } | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [fileData, setFileData] = useState<{ format: string; content: string; encoding: string } | null>(null);
+  const [policy, setPolicy] = useState<'skip' | 'replace' | 'merge'>('skip');
+  const [acknowledgeCurrencyChanges, setAcknowledgeCurrencyChanges] = useState(false);
+  const commitKey = useRef(crypto.randomUUID());
   async function download(format: string) {
-    const response = await api<{ filename: string; content: string; encoding: string }>(`/api/v1/export?format=${format}&includeSettings=true`);
-    const blob = response.data.encoding === 'base64' ? new Blob([Uint8Array.from(atob(response.data.content), (char) => char.charCodeAt(0))]) : new Blob([response.data.content]);
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = response.data.filename;
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      const response = await api<{ filename: string; content: string; encoding: string }>(`/api/v1/export?format=${format}&includeSettings=true`);
+      const blob = response.data.encoding === 'base64' ? new Blob([Uint8Array.from(atob(response.data.content), (char) => char.charCodeAt(0))]) : new Blob([response.data.content]);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = response.data.filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setNote(error instanceof Error ? error.message : 'Export failed.');
+    }
   }
-  async function onFile(file: File) {
-    const format = file.name.endsWith('.xlsx') ? 'xlsx' : file.name.endsWith('.yaml') || file.name.endsWith('.yml') ? 'yaml' : file.name.endsWith('.csv') ? 'csv' : file.name.endsWith('.sql') ? 'sql' : 'json';
-    const content = format === 'xlsx' ? btoa(String.fromCharCode(...new Uint8Array(await file.arrayBuffer()))) : await file.text();
-    const response = await api<{ previewId: string; contentHash: string; rows: { name: string; action: string }[] }>('/api/v1/import/preview', {
+  async function showPreview(input: NonNullable<typeof fileData>, chosenPolicy: typeof policy, acknowledged: boolean) {
+    setPreview(null);
+    const response = await api<NonNullable<typeof preview>>('/api/v1/import/preview', {
       method: 'POST',
-      body: { format, content, encoding: format === 'xlsx' ? 'base64' : 'utf8', policy: 'skip', includeSettings: true },
+      body: { ...input, policy: chosenPolicy, includeSettings: true, acknowledgeCurrencyChanges: acknowledged },
     });
     setPreview(response.data);
+    commitKey.current = crypto.randomUUID();
     setNote('Preview only. Nothing has been saved.');
+  }
+  async function onFile(file: File) {
+    try {
+      const format = file.name.endsWith('.xlsx') ? 'xlsx' : file.name.endsWith('.yaml') || file.name.endsWith('.yml') ? 'yaml' : file.name.endsWith('.csv') ? 'csv' : file.name.endsWith('.sql') ? 'sql' : 'json';
+      let content: string;
+      if (format === 'xlsx') {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        let binary = '';
+        for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+          binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+        }
+        content = btoa(binary);
+      } else {
+        content = await file.text();
+      }
+      const input = { format, content, encoding: format === 'xlsx' ? 'base64' : 'utf8' };
+      setFileData(input);
+      await showPreview(input, policy, acknowledgeCurrencyChanges);
+    } catch (error) {
+      setNote(error instanceof Error ? error.message : 'The file could not be previewed.');
+    }
+  }
+  async function commitPreview() {
+    if (!preview) return;
+    try {
+      const result = await api<{ applied: unknown[]; skipped: number }>('/api/v1/import/commit', { method: 'POST', idempotencyKey: commitKey.current, body: { previewId: preview.previewId, contentHash: preview.contentHash } });
+      setNote(`Applied ${result.data.applied.length} rows; skipped ${result.data.skipped}. Domains not in the file were kept.`);
+      setPreview(null);
+      await onChanged();
+    } catch (error) {
+      setNote(error instanceof Error ? `${error.message} Nothing was committed.` : 'Import failed. Nothing was committed.');
+    }
   }
   return (
     <section className="grid gap-3">
@@ -751,15 +893,14 @@ function Transfer({ domains }: { domains: DomainView[] }) {
         {['json', 'yaml', 'xlsx', 'csv', 'sql'].map((format) => <button key={format} className="min-h-11 rounded-md border border-zinc-700 px-3" onClick={() => void download(format)}>{format.toUpperCase()}</button>)}
       </div>
       <input aria-label="Import file" type="file" onChange={(event) => { const file = event.target.files?.[0]; if (file) void onFile(file); }} />
+      <label className="text-sm">When a domain already exists<select className="field" value={policy} onChange={(event) => { const chosen = event.target.value as typeof policy; setPolicy(chosen); if (fileData) void showPreview(fileData, chosen, acknowledgeCurrencyChanges).catch((error) => setNote(error instanceof Error ? error.message : 'Preview failed.')); }}><option value="skip">Skip</option><option value="merge">Merge nonempty fields</option><option value="replace">Replace public fields</option></select></label>
+      <label className="text-sm"><input type="checkbox" checked={acknowledgeCurrencyChanges} onChange={(event) => { setAcknowledgeCurrencyChanges(event.target.checked); if (fileData) void showPreview(fileData, policy, event.target.checked).catch((error) => setNote(error instanceof Error ? error.message : 'Preview failed.')); }} /> I understand changing currency may clear stored costs</label>
       {note ? <p className="text-sm">{note}</p> : null}
       {preview ? (
         <div>
-          <ul className="text-sm">{preview.rows.map((row) => <li key={row.name}>{row.name}: {row.action}</li>)}</ul>
-          <button className="mt-2 min-h-11 rounded-md bg-indigo-600 px-3" onClick={async () => {
-            await api('/api/v1/import/commit', { method: 'POST', idempotencyKey: crypto.randomUUID(), body: { previewId: preview.previewId, contentHash: preview.contentHash } });
-            setNote(`Committed ${preview.rows.length} rows. Domains not in the file were kept.`);
-            setPreview(null);
-          }}>Commit preview</button>
+          {preview.warnings.map((warning) => <p key={warning} className="text-amber-300">{warning}</p>)}
+          <ul className="text-sm">{preview.rows.map((row, index) => <li key={`${row.name}-${index}`}>{row.name}: {row.action}{row.currencyClearsCosts ? ' · currency change clears costs' : ''}{row.issues.length ? ` · ${row.issues.join(', ')}` : ''}</li>)}</ul>
+          <button className="mt-2 min-h-11 rounded-md bg-indigo-600 px-3" disabled={preview.currencyAcknowledgementRequired && !acknowledgeCurrencyChanges} onClick={() => void commitPreview()}>Commit preview</button>
         </div>
       ) : null}
       <p className="text-xs text-zinc-500">{domains.length} domains currently loaded in this view.</p>
@@ -768,34 +909,45 @@ function Transfer({ domains }: { domains: DomainView[] }) {
 }
 
 function Admin({ onChanged }: { onChanged: () => Promise<void> }) {
-  const [requests, setRequests] = useState<{ id: string; email: string; reason: string; status: string; mailState: string }[]>([]);
-  useEffect(() => {
-    void api<{ requests: { id: string; email: string; reason: string; status: string; mailState: string }[] }>('/api/admin/requests').then((response) => setRequests(response.data.requests));
-  }, []);
-  async function decide(id: string, action: 'approve' | 'deny') {
-    await api(`/api/admin/requests/${id}/${action}`, { method: 'POST', body: {} });
+  const [requests, setRequests] = useState<{ id: string; email: string; reason: string; status: string; mailState: string; notificationId: string | null; notificationStatus: string | null }[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  async function reload() {
     const response = await api<{ requests: typeof requests }>('/api/admin/requests');
     setRequests(response.data.requests);
-    await onChanged();
+  }
+  useEffect(() => {
+    void reload().catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not load requests.'));
+  }, []);
+  async function act(path: string) {
+    setError(null);
+    try {
+      await api(path, { method: 'POST', body: {} });
+      await reload();
+      await onChanged();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The action failed.');
+    }
   }
   return (
     <section>
       <h1 className="text-xl font-semibold">Access requests</h1>
       <p className="mt-2 text-sm text-zinc-400">Approval manages membership only. It does not open another person’s domains or keys.</p>
+      {error ? <p role="alert" className="mt-2 text-sm text-rose-300">{error}</p> : null}
       <ul className="mt-4 divide-y divide-zinc-800 border-y border-zinc-800">
         {requests.map((request) => (
           <li key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-            <span><span className="block">{request.email}</span><span className="text-xs text-zinc-400">{request.status} · mail {request.mailState} · {request.reason || 'No reason'}</span></span>
+            <span><span className="block">{request.email}</span><span className="text-xs text-zinc-400">{request.status} · sign-in mail {request.mailState} · admin alert {request.notificationStatus ?? 'none'} · {request.reason || 'No reason'}</span></span>
             {request.status === 'pending' ? (
               <span className="flex gap-2">
-                <button className="min-h-11 rounded-md bg-indigo-600 px-3" onClick={() => void decide(request.id, 'approve')}>Approve</button>
-                <button className="min-h-11 rounded-md border border-zinc-700 px-3" onClick={() => void decide(request.id, 'deny')}>Deny</button>
+                <button className="min-h-11 rounded-md bg-indigo-600 px-3" onClick={() => void act(`/api/admin/requests/${request.id}/approve`)}>Approve</button>
+                <button className="min-h-11 rounded-md border border-zinc-700 px-3" onClick={() => void act(`/api/admin/requests/${request.id}/deny`)}>Deny</button>
               </span>
             ) : null}
+            {request.status === 'approved' && request.mailState === 'failed' ? <button className="min-h-11 text-amber-300" onClick={() => void act(`/api/admin/requests/${request.id}/resend-signin`)}>Retry sign-in mail</button> : null}
+            {request.notificationId && request.notificationStatus === 'failed' ? <button className="min-h-11 text-amber-300" onClick={() => void act(`/api/admin/notifications/${request.notificationId}/retry`)}>Retry admin alert</button> : null}
           </li>
         ))}
       </ul>
     </section>
   );
 }
-

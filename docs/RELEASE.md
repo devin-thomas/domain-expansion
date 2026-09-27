@@ -16,6 +16,10 @@ Domain Expansion is the React/TypeScript/Vite application in this repository. Fi
 
 These checks use the memory store, a fake mail port, a fake Gemini port, and the local emulator. They do not prove inbox delivery, live Gemini, live Google Calendar/Tasks/Sheets/Drive, or a public HTTPS host.
 
+## Follow-up QA on the implementation branch
+
+The local clone passed `npm run lint`, `npm run build`, `npm test` (22 passed; emulator tests skipped), and `npm run test:browser` (5 passed). New API regressions cover fail-closed deployed configuration, shared API request limits, and preserving Calendar metadata when Tasks is connected. Browser regressions cover archive restore, token revocation, and import commit refresh. The local Firestore emulator did not finish starting on this machine, which currently has Java 17; this follow-up does not replace the earlier emulator evidence above. `npm audit --omit=dev` still reports one high-severity advisory for the `xlsx` package used to parse user-selected imports. Resolve or mitigate that dependency before production release.
+
 ## Blocked before calling the host live
 
 DEW-017 stays blocked until someone with authority confirms all of the following:

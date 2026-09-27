@@ -63,3 +63,45 @@ test('keyboard can reach the five quick-add fields', async ({ page }) => {
   await page.keyboard.press('Tab');
   await expect(page.getByTestId('quick-add-registrar')).toBeFocused();
 });
+
+test('archived records can be found and restored through the connected UI', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('test-sign-in').click();
+  await page.getByTestId('open-add').click();
+  await page.getByTestId('quick-add-domain').fill('archive.example');
+  await page.getByTestId('quick-add-date').fill('2027-04-05');
+  await page.getByTestId('quick-add-save').click();
+  await page.getByTestId('nav-domains').click();
+  await page.getByRole('button', { name: /archive\.example/ }).click();
+  await page.getByTestId('more-details').click();
+  await page.getByTestId('advanced-panel').getByRole('checkbox', { name: 'Archived' }).check();
+  await page.getByTestId('quick-add-save').click();
+  await expect(page.getByRole('button', { name: /archive\.example/ })).toHaveCount(0);
+  await page.getByLabel('View archived domains').check();
+  await page.getByRole('button', { name: /archive\.example/ }).click();
+  await page.getByTestId('more-details').click();
+  await page.getByTestId('advanced-panel').getByRole('checkbox', { name: 'Archived' }).uncheck();
+  await page.getByTestId('quick-add-save').click();
+  await page.getByLabel('View archived domains').uncheck();
+  await expect(page.getByRole('button', { name: /archive\.example/ })).toBeVisible();
+});
+
+test('settings connects token management and import commit to the portfolio', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('test-sign-in').click();
+  await page.getByTestId('nav-settings').click();
+  await page.getByRole('button', { name: 'Create token' }).click();
+  await expect(page.getByText(/dew1\./)).toBeVisible();
+  await page.getByRole('button', { name: 'Revoke' }).click();
+  await expect(page.getByText(/revoked/)).toBeVisible();
+  await page.getByLabel('Import file').setInputFiles({
+    name: 'portfolio.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ format: 'domain-expansion-backup', schemaVersion: 2, domains: [{ name: 'imported.example', expirationDate: '2027-04-01' }] })),
+  });
+  await expect(page.getByText(/imported\.example: create/)).toBeVisible();
+  await page.getByRole('button', { name: 'Commit preview' }).click();
+  await expect(page.getByText(/Applied 1 rows/)).toBeVisible();
+  await page.getByTestId('nav-domains').click();
+  await expect(page.getByRole('button', { name: /imported\.example/ })).toBeVisible();
+});

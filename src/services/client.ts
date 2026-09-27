@@ -76,7 +76,8 @@ export class ApiClientError extends Error {
 
 export async function api<T>(path: string, options: { method?: string; body?: unknown; idempotencyKey?: string; ifMatch?: string } = {}): Promise<{ data: T; etag: string | null }> {
   const headers: Record<string, string> = { accept: 'application/json' };
-  if (memoryToken) headers.authorization = `Bearer ${memoryToken}`;
+  const token = memoryToken?.startsWith('test.') ? memoryToken : auth.currentUser ? await auth.currentUser.getIdToken() : memoryToken;
+  if (token) headers.authorization = `Bearer ${token}`;
   if (options.body !== undefined) headers['content-type'] = 'application/json';
   if (options.idempotencyKey) headers['idempotency-key'] = options.idempotencyKey;
   if (options.ifMatch) headers['if-match'] = options.ifMatch;

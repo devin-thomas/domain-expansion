@@ -66,7 +66,7 @@ export async function connectGoogle(action: GoogleAction): Promise<string> {
   });
 }
 
-export async function createCalendarEvent(accessToken: string, domainName: string, date: string, reconcileKey: string): Promise<{ id: string; uncertain: boolean; alreadyExisted: boolean }> {
+export async function createCalendarEvent(accessToken: string, title: string, date: string, reconcileKey: string): Promise<{ id: string; uncertain: boolean; alreadyExisted: boolean }> {
   const listed = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?privateExtendedProperty=domainExpansionKey%3D${encodeURIComponent(reconcileKey)}&timeMin=${date}T00:00:00Z&timeMax=${date}T23:59:59Z`, {
     headers: { authorization: `Bearer ${accessToken}` },
   });
@@ -79,7 +79,7 @@ export async function createCalendarEvent(accessToken: string, domainName: strin
     method: 'POST',
     headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
     body: JSON.stringify({
-      summary: `Renew ${domainName}`,
+      summary: title,
       start: { date },
       end: { date: end },
       extendedProperties: { private: { domainExpansionKey: reconcileKey } },
@@ -90,7 +90,7 @@ export async function createCalendarEvent(accessToken: string, domainName: strin
   return { id: event.id, uncertain: false, alreadyExisted: false };
 }
 
-export async function createTask(accessToken: string, domainName: string, date: string, reconcileKey: string): Promise<{ id: string; uncertain: boolean; alreadyExisted: boolean }> {
+export async function createTask(accessToken: string, title: string, date: string, reconcileKey: string): Promise<{ id: string; uncertain: boolean; alreadyExisted: boolean }> {
   const listed = await fetch('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks?showCompleted=false', {
     headers: { authorization: `Bearer ${accessToken}` },
   });
@@ -101,7 +101,7 @@ export async function createTask(accessToken: string, domainName: string, date: 
   const created = await fetch('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks', {
     method: 'POST',
     headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ title: `Renew ${domainName}`, due: `${date}T00:00:00.000Z`, notes: `domainExpansionKey:${reconcileKey}` }),
+    body: JSON.stringify({ title, due: `${date}T00:00:00.000Z`, notes: `domainExpansionKey:${reconcileKey}` }),
   });
   if (!created.ok) throw new Error('Tasks did not accept the reminder. The domain record was not changed.');
   const task = (await created.json()) as { id: string };
