@@ -2,8 +2,8 @@
 
 ## Discovery Status
 
-- Grill-to-Build discovery round: 2 complete
-- Product questions answered: 8
+- Grill-to-Build discovery round: 3 complete
+- Product questions answered: 12
 - Living model format: Markdown/Mermaid (workflow default because no explicit preference was supplied)
 - Specification status: not yet created; discovery is still active
 - Tickets status: not yet created
@@ -84,11 +84,21 @@ Canonical Firestore save
 
 AI output is proposed data, never canonical state by itself.
 
+AI Quick Add never auto-saves. Review must remain extremely lightweight: a compact editable preview, clear uncertainty markers where needed, and one explicit approval action.
+
+A single AI submission may yield one or many proposed domain records. Batch review must support approving all valid drafts or handling individual drafts without turning the interaction into a heavy workflow.
+
 Unknown or ambiguous values remain unknown or are surfaced for review rather than silently invented.
 
 The feature should reuse the proven Wayfarer interaction pattern: extraction creates a structured draft, and only an explicitly approved draft is promoted into canonical state.
 
-The AI provider must sit behind a replaceable server-side adapter. Provider credentials must never ship in the browser bundle.
+The AI provider must sit behind a replaceable server-side adapter.
+
+For the owner/admin account, Domain Expansion may use a privately configured server-side Gemini credential as an internal exception.
+
+For other approved users, AI Quick Add is BYOK: the user must deliberately provide/configure their own supported AI provider credential before AI processing is enabled for their account. Their domain text must not be silently routed through the owner's Gemini project.
+
+Provider credentials must never ship in the browser bundle.
 
 ## Advanced Domain Data
 
@@ -151,6 +161,8 @@ Admin review
 ```
 
 Public request responses should not disclose sensitive account-state information unnecessarily.
+
+New access requests must appear in the admin interface and also trigger an external email notification to the administrator.
 
 Authentication is separate from authorization. A Firebase Auth identity alone must not grant access to protected Firestore data unless the user is approved.
 
@@ -328,9 +340,8 @@ See `Ideas.md`.
 
 Discovery remains open around:
 
-- AI save/review behavior details
-- initial Gemini model/fallback policy
+- BYOK credential storage and lifecycle
 - personal access token scope granularity and automation safety
-- access-request/admin notification behavior
 - exact multi-user Firestore ownership/isolation rules
 - canonical advanced-domain schema and migration mapping
+- admin-notification delivery implementation
