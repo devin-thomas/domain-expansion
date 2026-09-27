@@ -131,3 +131,44 @@
 **Rationale:** Domain extraction is a small structured-inference task where latency and cost matter more than heavyweight reasoning.
 
 **Consequences:** Model selection is configuration rather than product logic. Fallback should be invoked only for appropriate provider failures, and all outputs remain subject to the same structured validation and explicit user approval.
+
+
+## ADR-014 - Persist BYOK credentials encrypted server-side
+
+**Status:** Accepted
+
+**Decision:** Approved non-owner users may persist their AI provider credential encrypted server-side. Firestore must never store the raw credential in plaintext, and the raw credential is not returned to the browser after setup.
+
+**Rationale:** Requiring the key every session would undermine the convenience of AI Quick Add, while browser-only persistence would make multi-device use fragile.
+
+**Consequences:** The implementation needs a server-only encryption secret, credential lifecycle endpoints, rotation/revocation behavior, and secret-safe logging/error handling.
+
+## ADR-015 - Keep user domain portfolios private from administrators by default
+
+**Status:** Accepted
+
+**Decision:** Administrative access to requests and account approval does not automatically grant read access to another user's domain records.
+
+**Rationale:** Product administration and user-data access are separate privileges. The gated invitation model should not imply that the product owner reads every approved user's portfolio.
+
+**Consequences:** Firestore rules and server APIs must enforce per-user ownership. Any future support-access mechanism must be explicit rather than implied by the admin role.
+
+## ADR-016 - Use Resend for administrator access-request notifications
+
+**Status:** Accepted
+
+**Decision:** Firebase continues to deliver passwordless authentication emails. Resend delivers administrator-facing access-request notification emails.
+
+**Rationale:** Access-request notifications are application email, not authentication email, and benefit from a clean dedicated delivery path.
+
+**Consequences:** Resend becomes a narrowly scoped server-side dependency with its own secret, sender configuration, failure handling, and delivery observability.
+
+## ADR-017 - Restore the richer canonical domain model without restoring UI clutter
+
+**Status:** Accepted
+
+**Decision:** The canonical web data model restores the richer domain concepts from the original Flutter implementation, including separate billing/expiration dates, registration/renewal costs, DNS provider, ownership, lifecycle, auto-renew, notes, archive state, and reminder overrides.
+
+**Rationale:** A rich data model improves automation, reporting, migration, and future integrations, while the AI Studio version proved that exposing every field during normal capture harms usability.
+
+**Consequences:** UI complexity is intentionally lower than schema complexity. Quick Add remains sparse, advanced fields are gated, and API/CLI consumers may access the richer model without forcing those fields into primary human workflows.
