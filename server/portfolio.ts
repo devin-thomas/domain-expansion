@@ -63,6 +63,7 @@ interface PreviewRow {
   revision?: number;
   issues: string[];
   currencyClearsCosts: boolean;
+  changes: { field: string; before: unknown; after: unknown }[];
   incoming: CreateDomainInput;
 }
 
@@ -427,6 +428,7 @@ export async function previewImport(store: DocStore, actor: Actor, body: unknown
     asDomainError(error);
   }
   const policy = parsedBody.policy;
+  const settings = await loadSettings(store, actor.uid);
   const existing = (await store.list<DomainRecord>(domainsPrefix(actor.uid))).map((item) => item.data);
   const byName = new Map(existing.map((record) => [record.normalizedName, record]));
   const rows: PreviewRow[] = [];
@@ -437,18 +439,35 @@ export async function previewImport(store: DocStore, actor: Actor, body: unknown
       normalized = draft.normalizedName;
     } catch (error) {
       const message = error instanceof DomainInputError ? error.message : 'Invalid domain';
-      rows.push({ name: incoming.name, action: 'blocked', issues: [message], currencyClearsCosts: false, incoming });
+      rows.push({ name: incoming.name, action: 'blocked', issues: [message], currencyClearsCosts: false, changes: [], incoming });
       continue;
     }
     const current = byName.get(normalized);
     if (!current) {
       if (!incoming.billingDate && !incoming.expirationDate) {
-        rows.push({ name: normalized, action: 'blocked', issues: ['Enter a renewal or billing date'], currencyClearsCosts: false, incoming });
-      } else rows.push({ name: normalized, action: 'create', issues: [], currencyClearsCosts: false, incoming });
+        rows.push({ name: normalized, action: 'blocked', issues: ['Enter a renewal or billing date'], currencyClearsCosts: false, changes: [], incoming });
+      } else {
+        try {
+          const created = buildRecordFromCreate(incoming, settings, 'preview', now.toISOString());
+          rows.push({ name: normalized, action: 'create', issues: [], currencyClearsCosts: false, changes: previewChanges(null, created), incoming });
+        } catch (error) {
+          rows.push({ name: normalized, action: 'blocked', issues: [error instanceof DomainInputError ? error.message : 'Invalid domain'], currencyClearsCosts: false, changes: [], incoming });
+        }
+      }
       continue;
     }
-    const currencyClearsCosts = Boolean(incoming.currency && incoming.currency !== current.currency && (current.registrationCostMinor !== null || current.renewalCostMinor !== null));
     const action = policy === 'skip' ? 'skip' : policy;
+    const currencyClearsCosts = action !== 'skip' && Boolean(incoming.currency && incoming.currency !== current.currency && (current.registrationCostMinor !== null || current.renewalCostMinor !== null));
+    let changes: PreviewRow['changes'] = [];
+    if (action !== 'skip') {
+      try {
+        const next = action === 'replace' ? replaceRecord(current, incoming, now.toISOString()) : mergeRecord(current, incoming, now.toISOString());
+        changes = previewChanges(current, next);
+      } catch (error) {
+        rows.push({ name: normalized, action: 'blocked', domainId: current.id, revision: current.revision, issues: [error instanceof DomainInputError ? error.message : 'Invalid domain'], currencyClearsCosts: false, changes: [], incoming });
+        continue;
+      }
+    }
     rows.push({
       name: normalized,
       action,
@@ -456,6 +475,7 @@ export async function previewImport(store: DocStore, actor: Actor, body: unknown
       revision: current.revision,
       issues: [],
       currencyClearsCosts,
+      changes,
       incoming,
     });
   }
@@ -485,6 +505,12 @@ export async function previewImport(store: DocStore, actor: Actor, body: unknown
       contentHash: hash,
       fullFidelity: parsed!.fullFidelity,
       warnings: parsed!.warnings,
+      settingsChanges: parsedBody.includeSettings && parsed!.settings
+        ? Object.entries(parsed!.settings).flatMap(([field, value]) => {
+            const previous = settings[field as keyof AppSettings];
+            return stableStringify(previous) === stableStringify(value) ? [] : [{ field, before: previous, after: value }];
+          })
+        : [],
       currencyAcknowledgementRequired: rows.some((row) => row.currencyClearsCosts),
       rows: rows.map(publicRow),
     },
@@ -499,7 +525,16 @@ function publicRow(row: PreviewRow) {
     revision: row.revision ?? null,
     issues: row.issues,
     currencyClearsCosts: row.currencyClearsCosts,
+    changes: row.changes,
   };
+}
+
+function previewChanges(before: DomainRecord | null, after: DomainRecord): PreviewRow['changes'] {
+  const previous = before ? publicFieldsOf(before) as Record<string, unknown> : {};
+  return Object.entries(publicFieldsOf(after)).flatMap(([field, value]) => {
+    const prior = previous[field] ?? null;
+    return stableStringify(prior) === stableStringify(value) ? [] : [{ field, before: prior, after: value }];
+  });
 }
 
 export async function commitImport(store: DocStore, actor: Actor, body: unknown, key: string | undefined, now: Date): Promise<HandlerResult> {

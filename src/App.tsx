@@ -823,12 +823,13 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
 }
 
 function Transfer({ domains, onChanged }: { domains: DomainView[]; onChanged: () => Promise<void> }) {
-  const [preview, setPreview] = useState<{ previewId: string; contentHash: string; rows: { name: string; action: string; currencyClearsCosts: boolean; issues: string[] }[]; warnings: string[]; currencyAcknowledgementRequired: boolean } | null>(null);
+  const [preview, setPreview] = useState<{ previewId: string; contentHash: string; rows: { name: string; action: string; currencyClearsCosts: boolean; issues: string[]; changes: { field: string; before: unknown; after: unknown }[] }[]; settingsChanges: { field: string; before: unknown; after: unknown }[]; warnings: string[]; currencyAcknowledgementRequired: boolean } | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [fileData, setFileData] = useState<{ format: string; content: string; encoding: string } | null>(null);
   const [policy, setPolicy] = useState<'skip' | 'replace' | 'merge'>('skip');
   const [acknowledgeCurrencyChanges, setAcknowledgeCurrencyChanges] = useState(false);
   const commitKey = useRef(crypto.randomUUID());
+  const displayValue = (value: unknown) => value === null || value === undefined ? 'not set' : typeof value === 'object' ? JSON.stringify(value) : String(value);
   async function download(format: string) {
     try {
       const response = await api<{ filename: string; content: string; encoding: string }>(`/api/v1/export?format=${format}&includeSettings=true`);
@@ -899,7 +900,8 @@ function Transfer({ domains, onChanged }: { domains: DomainView[]; onChanged: ()
       {preview ? (
         <div>
           {preview.warnings.map((warning) => <p key={warning} className="text-amber-300">{warning}</p>)}
-          <ul className="text-sm">{preview.rows.map((row, index) => <li key={`${row.name}-${index}`}>{row.name}: {row.action}{row.currencyClearsCosts ? ' · currency change clears costs' : ''}{row.issues.length ? ` · ${row.issues.join(', ')}` : ''}</li>)}</ul>
+          <ul className="space-y-2 text-sm">{preview.rows.map((row, index) => <li key={`${row.name}-${index}`} className="rounded border border-zinc-800 p-2"><p>{row.name}: {row.action}{row.currencyClearsCosts ? ' · currency change clears costs' : ''}{row.issues.length ? ` · ${row.issues.join(', ')}` : ''}</p>{row.changes.map((change) => <p key={change.field} className="pl-2 text-zinc-400">{change.field}: {displayValue(change.before)} → {displayValue(change.after)}</p>)}</li>)}</ul>
+          {preview.settingsChanges.length ? <div className="mt-3 text-sm"><p>Settings changes</p>{preview.settingsChanges.map((change) => <p key={change.field} className="pl-2 text-zinc-400">{change.field}: {displayValue(change.before)} → {displayValue(change.after)}</p>)}</div> : null}
           <button className="mt-2 min-h-11 rounded-md bg-indigo-600 px-3" disabled={preview.currencyAcknowledgementRequired && !acknowledgeCurrencyChanges} onClick={() => void commitPreview()}>Commit preview</button>
         </div>
       ) : null}

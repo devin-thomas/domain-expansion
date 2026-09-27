@@ -53,4 +53,25 @@ describe('production boundaries and connected integrations', () => {
       await harness.close();
     }
   });
+
+  it('previews exact import field changes before committing', async () => {
+    const harness = await startHarness();
+    try {
+      const token = await session(harness.base, { uid: 'importer', email: 'importer@example.com' });
+      await call(harness.base, token, 'POST', '/api/v1/domains', {
+        headers: { 'idempotency-key': 'import-original' },
+        body: { name: 'change.example', expirationDate: '2027-01-01', renewalCostMinor: 1200, currency: 'USD' },
+      });
+      const content = JSON.stringify({ format: 'domain-expansion-backup', schemaVersion: 2, domains: [{ name: 'change.example', expirationDate: '2027-02-01', renewalCostMinor: 1500, currency: 'USD' }] });
+      const preview = await call(harness.base, token, 'POST', '/api/v1/import/preview', { body: { format: 'json', content, policy: 'merge' } });
+      expect(preview.status).toBe(200);
+      expect(preview.body.rows[0].changes).toContainEqual({ field: 'expirationDate', before: '2027-01-01', after: '2027-02-01' });
+      expect(preview.body.rows[0].changes).toContainEqual({ field: 'renewalCostMinor', before: 1200, after: 1500 });
+      expect(preview.body.rows[0].changes).not.toEqual(expect.arrayContaining([{ field: 'currency', before: 'USD', after: 'USD' }]));
+      const skipped = await call(harness.base, token, 'POST', '/api/v1/import/preview', { body: { format: 'json', content, policy: 'skip' } });
+      expect(skipped.body.rows[0].changes).toEqual([]);
+    } finally {
+      await harness.close();
+    }
+  });
 });
