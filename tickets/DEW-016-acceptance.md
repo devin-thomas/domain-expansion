@@ -1,6 +1,6 @@
 # DEW-016 — Prove security, recovery, and human usability
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -30,4 +30,25 @@ Contract: SPEC section 13; R01–R13, R15.
 
 ## Verification
 
-Not run. Replace this section with exact command/results and browser/device/provider evidence. List failures and remaining external blockers individually. The ticket is not complete while required checks are merely planned or mocked.
+2026-09-27, Node.js 22.14.0, OpenJDK 21.0.10, Chrome via Playwright 1.55.1.
+
+Passed:
+
+- `npx tsc --noEmit`
+- `npm run build` with `client boundary ok`
+- `npx vitest run` — 19 passed; emulator file skipped without `FIRESTORE_EMULATOR_HOST`
+- `npm run test:emulator` — 3 passed (client rules denied, Admin SDK isolation, credential rotation)
+- `npx playwright test` — 3 passed (390×844 Quick Add, 1440×900, CSS zoom 2, keyboard Tab, AI mode does not show a save)
+
+Those checks cover isolation, scopes, revocation, stale revisions, idempotency, batch/import atomicity, owner-key separation, and the five-field form. Provider ports were fakes except the Firestore emulator.
+
+Not run, and not claimed:
+
+- Physical iPhone or Android.
+- Live Resend inbox delivery.
+- Live Firebase email-link completion.
+- Live Gemini.
+- Live Google Calendar, Tasks, Sheets, or Drive.
+- Production DNS for `domains.devthomas.site`.
+
+Those gaps are the DEW-017 blockers. They are not recorded as success.

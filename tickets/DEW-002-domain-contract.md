@@ -1,6 +1,6 @@
 # DEW-002 — Implement the rich canonical domain contract
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -29,4 +29,4 @@ Contract: SPEC sections 3–4; R04, R15.
 
 ## Verification
 
-Not run. Record schema and calculation fixtures/results, including at least one record containing every advanced field and tests that preserve it through partial updates.
+2026-09-27. `tests/unit/domain.test.ts` (7 tests) covers normalization, money minor units, date handling, reminders, and partial updates. `tests/unit/backup-vault.test.ts` round-trips a record that includes registrar, DNS, ownership, lifecycle, intent, auto-renew, both dates, both costs, currency, notes, archive, and reminders through JSON, YAML, and XLSX. A quick PATCH in `tests/api/matrix.test.ts` keeps notes, DNS, and auto-renew when only registrar changes.

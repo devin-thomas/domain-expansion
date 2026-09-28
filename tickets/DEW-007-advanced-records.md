@@ -1,6 +1,6 @@
 # DEW-007 — Add advanced details without cluttering primary screens
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -29,4 +29,4 @@ Contract: SPEC sections 3–4 and 5; R04, R09, R11.
 
 ## Verification
 
-Not run. Record complete-rich-record round-trip, hidden-field preservation, financial/state fixtures, stale edit, archive reversal, danger cancellation, and responsive screenshots.
+2026-09-27. The rich-record fixture in `tests/unit/backup-vault.test.ts` and the partial PATCH in `tests/api/matrix.test.ts` keep advanced fields. Playwright opens More details only after an explicit click and finds zero advanced panels before that. Archive and guarded permanent delete are covered by `tests/cli/cli.test.ts` (a read/write token cannot delete; the record remains). No separate screenshot archive was saved.

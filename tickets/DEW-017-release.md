@@ -1,6 +1,6 @@
 # DEW-017 — Verify the canonical host and release the portfolio-ready product
 
-**Status:** Not started
+**Status:** Blocked
 
 ## Goal
 
@@ -30,4 +30,16 @@ Contract: SPEC sections 12–13; R14, R16.
 
 ## Verification
 
-Not run. Record authorized deployment/commit identifier, host/callback probes, recipient delivery evidence, service quota check date, and remaining limitations. This documentation pack itself does not perform the release or change billing.
+Blocked on 2026-09-27. No deployment identifier, host probe, inbox receipt, or quota check exists for this change.
+
+Missing inputs:
+
+- Authority to set DNS so `domains.devthomas.site` reaches the intended Vercel project.
+- Firebase authorized-domain and sender verification for `Domain Expansion <auth@devthomas.site>`.
+- A real admin recipient and Resend credentials, plus permission to send the admission mail.
+- Firebase email-link quota review and explicit billing consent before any paid change.
+- `OWNER_UID` and the server secrets named in `docs/RELEASE.md`, supplied outside git.
+- A second device to finish a real email link.
+- Physical phone checks, which DEW-016 also leaves unclaimed.
+
+Automated evidence for DEW-001 through DEW-016 is in those tickets. Rollback steps are in `docs/RELEASE.md`. This ticket does not change billing or DNS.

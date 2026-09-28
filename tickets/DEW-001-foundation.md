@@ -1,6 +1,6 @@
 # DEW-001 — Establish a runnable implementation foundation
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -27,4 +27,12 @@ None.
 
 ## Verification
 
-Not run. Record installation, typecheck, unit-test, emulator setup, route smoke, and build results here, including actual command names and any toolchain limitations.
+2026-09-27, Node.js 22.14.0.
+
+- `npx tsc --noEmit` exited 0.
+- `npm run build` wrote the Vite client, `dist/server.cjs`, and printed `client boundary ok`. The scan rejects `firebase-admin`, private-key markers, and `data-testid="test-sign-in"` in `dist/assets`.
+- `tests/api/routes.test.ts` checks `/api/health` returns JSON, `/showcase` and `/auth/finish` serve the SPA shell, and `/api/v1/domains` stays an API 401.
+- `npx vitest run` passed the unit, API, and CLI files (19 tests). The emulator file skips unless `FIRESTORE_EMULATOR_HOST` is set.
+- `npm run test:emulator` started the Firestore emulator on Java 21 and passed 3 tests.
+- `.env.example` uses placeholders and separates `VITE_*` web config from server secrets.
+- `/showcase` remains. No framework rewrite.

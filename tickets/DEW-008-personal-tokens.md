@@ -1,6 +1,6 @@
 # DEW-008 — Issue and enforce scoped personal access tokens
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -29,4 +29,4 @@ Contract: SPEC sections 5 and 9.1; R02, R08, R09.
 
 ## Verification
 
-Not run. Record the full scope/expiry/revocation matrix, verifier and token-leak checks, and browser creation/revocation evidence. Use disposable test tokens only.
+2026-09-27. `tests/api/matrix.test.ts` creates read, write, and read/write `dew1.` tokens, checks the stored record does not contain the secret segment, enforces scopes, rejects token creation from a stale auth time, and returns 401 after revoke. A read/write token cannot `DELETE` or call `/api/tokens` or `/api/ai/extract`. Browser token creation shows the secret once in Settings. Tokens in this run were disposable test tokens.

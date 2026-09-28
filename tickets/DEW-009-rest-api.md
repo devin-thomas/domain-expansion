@@ -1,6 +1,6 @@
 # DEW-009 — Publish the versioned domain API contract
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -29,4 +29,4 @@ Contract: SPEC sections 4–5 and 9; R07, R08, R15.
 
 ## Verification
 
-Not run. Record API contract results, full-collection pagination/search fixtures, duplicate/stale/replay tests, import scope tests, and an OpenAPI/schema consistency check.
+2026-09-27. `tests/api/matrix.test.ts` and `tests/api/routes.test.ts` cover health, isolation, idempotency, revisions, batch atomicity, import preview with no write, commit that keeps omitted records, and export text that does not contain token or Gemini material. Documented OpenAPI paths are checked against `ROUTE_TABLE`. `npm run openapi` wrote `docs/openapi.json`. SQL import is rejected.

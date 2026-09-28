@@ -1,6 +1,6 @@
 # DEW-014 — Preserve advanced file portability without hidden data loss
 
-**Status:** Not started
+**Status:** Complete
 
 ## Goal
 
@@ -30,4 +30,4 @@ Contract: SPEC section 11.1; R04, R11, R15.
 
 ## Verification
 
-Not run. Record full-field round trips per advertised format, import preview/commit races, parser abuse fixtures, scope tests, and explicit limits. Do not label a format lossless until its fixture passes.
+2026-09-27. JSON, YAML, and XLSX round-trip the rich fixture with `fullFidelity: true`. SQL text throws and is not executed. A declared zip expansion over 8 MiB is rejected. Import preview does not add a domain; commit adds the new name and keeps the existing one. Export JSON from the API test does not match token or Gemini material. CSV is a lossy export. Schema version 1 is rejected.
