@@ -59,7 +59,7 @@ const GENERIC = 'If this email can be processed, the administrator will see the 
 const SIGNIN_GENERIC = 'If this email is approved, a sign-in link is on its way.';
 const MAX_RETRY_ATTEMPTS = 5;
 const MAX_RETRY_JOBS = 8;
-const MAX_RETRY_SCAN_PER_QUEUE = 64;
+const MAX_RETRY_SCAN_PER_QUEUE = 32;
 const RETRY_LEASE_MS = 60_000;
 const RETRY_WORKER_BUDGET_MS = 40_000;
 

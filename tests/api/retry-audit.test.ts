@@ -7,6 +7,27 @@ const path = '/api/internal/notifications/retry';
 const providerHeaders = { 'user-agent': 'vercel-cron/1.0', 'x-vercel-cron-schedule': '0 12 * * *' };
 
 describe('bounded retry run evidence', () => {
+  it('bounds the combined two-queue scan and reaches overflow entries on later runs', async () => {
+    const harness = await startHarness();
+    try {
+      await harness.deps.store.transaction(async (tx) => {
+        for (let index = 0; index < 70; index += 1) {
+          const id = `queued-${String(index).padStart(2, '0')}`;
+          tx.set(`notifications/${id}`, { status: 'suppressed' });
+          tx.set(`signInMail/${id}`, { status: 'suppressed' });
+        }
+      });
+      for (const [scanned, lastId] of [[64, 'queued-31'], [64, 'queued-63'], [12, null]] as const) {
+        const response = await call(harness.base, 'retry-secret', 'GET', path, { headers: providerHeaders });
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ scanned, retried: 0 });
+        expect(await harness.deps.store.get('mailRetryRuns/vercel')).toMatchObject({ scanned, retried: 0, status: 'succeeded' });
+        expect(await harness.deps.store.get('mailQueueCursors/notifications')).toMatchObject({ afterPath: lastId ? `notifications/${lastId}` : null });
+        expect(await harness.deps.store.get('mailQueueCursors/sign-ins')).toMatchObject({ afterPath: lastId ? `signInMail/${lastId}` : null });
+      }
+    } finally { await harness.close(); }
+  });
+
   it('does not create evidence for an unauthenticated forged provider request', async () => {
     const harness = await startHarness();
     try {
