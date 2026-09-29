@@ -99,10 +99,10 @@ export async function handleApi(req: IncomingMessage & { body?: unknown }, res: 
       throw new ApiError(403, 'forbidden', 'This origin is not allowed');
     }
     const result = await dispatch(req, url, deps);
-    // The transaction has checked this precondition against the previous revision.
-    // Prevent host response helpers from comparing it again to the new ETag.
-    delete req.headers['if-match'];
-    send(res, result.status, result.body, requestId, result.etag, result.retryAfter);
+    // Vercel compares If-Match with a response ETag after the write has committed.
+    // Return the new revision in the body; GET supplies its validator for the next write.
+    const responseEtag = req.headers['if-match'] && !['GET', 'HEAD'].includes(req.method || '') ? undefined : result.etag;
+    send(res, result.status, result.body, requestId, responseEtag, result.retryAfter);
     if (background && req.method === 'POST' && ['/api/access/request', '/api/auth/email-link'].includes(url.pathname) && result.status < 300) {
       background(retryDueNotifications(deps.store, deps.config, deps.mail, deps.now()).catch(() => {
         deps.log('error', 'admission worker failed', { requestId });
