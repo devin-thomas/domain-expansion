@@ -38,6 +38,7 @@ import {
 } from './portfolio.js';
 import type { DocStore } from './store.js';
 import { RETRY_CRON_SCHEDULE, retryWithAudit } from './retry-audit.js';
+import { getVerifiedEdgeClientIp, isValidEdgeClientIp } from '../shared/edge-client-ip.js';
 
 export interface AppDeps {
   store: DocStore;
@@ -125,11 +126,11 @@ async function dispatch(req: IncomingMessage & { body?: unknown }, url: URL, dep
   if (method === 'GET' && path === '/api/openapi.json') return { status: 200, body: openApiDocument() };
   if (method === 'POST' && path === '/api/access/request') {
     const body = await readBody(req);
-    return submitAccessRequest(deps.store, deps.config, deps.mail, body, clientIp(req), now);
+    return submitAccessRequest(deps.store, deps.config, deps.mail, body, await clientIp(req, deps), now);
   }
   if (method === 'POST' && path === '/api/auth/email-link') {
     const body = await readBody(req);
-    return requestSignInLink(deps.store, deps.config, deps.mail, body, clientIp(req), now);
+    return requestSignInLink(deps.store, deps.config, deps.mail, body, await clientIp(req, deps), now);
   }
   if (method === 'POST' && path === '/api/test/session') return testSession(req, deps, now);
   if (['POST', 'GET'].includes(method) && path === '/api/internal/notifications/retry') {
@@ -293,10 +294,15 @@ function ifMatchHeader(req: IncomingMessage): string | undefined {
   return header(req, 'if-match') ?? header(req, FORWARDED_IF_MATCH_HEADER);
 }
 
-function clientIp(req: IncomingMessage): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-  return (raw || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+async function clientIp(req: IncomingMessage, deps: AppDeps): Promise<string> {
+  const verified = await getVerifiedEdgeClientIp({ get: (name) => header(req, name) ?? null }, deps.config.edgeClientIpSecret, deps.now());
+  if (verified) return verified;
+
+  if (Boolean(process.env.VERCEL) || deps.config.environmentName === 'test') {
+    const forwarded = header(req, 'x-forwarded-for')?.split(',')[0]?.trim();
+    if (forwarded && isValidEdgeClientIp(forwarded)) return forwarded;
+  }
+  return req.socket.remoteAddress || 'unknown';
 }
 
 async function readBody(req: IncomingMessage & { body?: unknown }): Promise<unknown> {

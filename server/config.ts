@@ -20,6 +20,7 @@ export interface Config {
   testAuth: boolean;
   testAuthSecret: string;
   notificationRetrySecret: string | null;
+  edgeClientIpSecret: string | null;
   cursorSecret: string;
   dataStore: 'memory' | 'firestore';
   aiPerMinute: number;
@@ -52,6 +53,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error('BYOK_KEY_ID is not present in BYOK_KEYRING');
   }
   const cursorSecret = env.CURSOR_SECRET || createHash('sha256').update(`dev-cursor:${environmentName}`).digest('hex');
+  const edgeClientIpSecret = env.EDGE_CLIENT_IP_SECRET || null;
+  if (edgeClientIpSecret && !/^[a-f\d]{64}$/i.test(edgeClientIpSecret)) {
+    throw new Error('EDGE_CLIENT_IP_SECRET must be 64 hexadecimal characters');
+  }
   return {
     environmentName,
     projectId: env.FIREBASE_PROJECT_ID || 'demo-domain-expansion',
@@ -72,6 +77,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     testAuth: testRequested,
     testAuthSecret: env.TEST_AUTH_SECRET || 'test-only-secret',
     notificationRetrySecret: env.NOTIFICATION_RETRY_SECRET || null,
+    edgeClientIpSecret,
     cursorSecret,
     dataStore: env.DATA_STORE === 'firestore' ? 'firestore' : 'memory',
     aiPerMinute: Number(env.AI_PER_MINUTE || 10),
