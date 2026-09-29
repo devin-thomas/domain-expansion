@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { credentialAad, open, seal } from '../../server/crypto';
 import { loadConfig } from '../../server/config';
 import { reencryptCredentials } from '../../server/credentials';
-import { batchCreate, commitImport, createDomain, getDomain, listDomains, previewImport } from '../../server/portfolio';
+import { batchCreate, commitImport, createDomain, getDomain, listDomains, patchDomain, previewImport } from '../../server/portfolio';
 import { createFirestoreStore } from '../../server/store';
 import type { Actor } from '../../server/auth';
 
@@ -55,6 +55,33 @@ describe.skipIf(!emulator)('firestore emulator', () => {
     await expect(getDomain(store, actor('admin'), id)).rejects.toMatchObject({ status: 404 });
     const own = await getDomain(store, actor('alice'), id);
     expect(own.status).toBe(200);
+  });
+
+  it('patches a newly created Firestore domain with the revision returned by GET', async () => {
+    const store = await createFirestoreStore();
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const actor: Actor = {
+      uid: `patch-${suffix}`,
+      email: 'patch@example.com',
+      emailVerified: true,
+      authTime: 1_800_000_000,
+      role: 'member',
+      authKind: 'session',
+      scopes: ['domains:read', 'domains:write'],
+    };
+    const created = await createDomain(store, actor, {
+      name: `patch-${suffix}.example`,
+      expirationDate: '2027-09-28',
+    }, `patch-${suffix}`, '2026-09-28T00:00:00.000Z');
+    const id = (created.body as { id: string; revision: number }).id;
+    const loaded = await getDomain(store, actor, id);
+    const revision = (loaded.body as { revision: number }).revision;
+
+    const patched = await patchDomain(store, actor, id, { registrar: 'Verification Registrar' }, `"${revision}"`, '2026-09-28T00:00:01.000Z');
+
+    expect(revision).toBe(1);
+    expect(patched.status).toBe(200);
+    expect(patched.body).toMatchObject({ registrar: 'Verification Registrar', revision: 2 });
   });
 
   it('paginates bounded queue reads by document path', async () => {
