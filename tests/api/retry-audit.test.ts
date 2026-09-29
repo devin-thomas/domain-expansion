@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { submitAccessRequest } from '../../server/admission';
-import type { RetryRun } from '../../server/retry-audit';
+import { RETRY_CRON_SCHEDULE, type RetryRun } from '../../server/retry-audit';
 import { call, startHarness } from '../helpers';
 
 const path = '/api/internal/notifications/retry';
-const providerHeaders = { 'user-agent': 'vercel-cron/1.0', 'x-vercel-cron-schedule': '0 12 * * *' };
+const providerHeaders = { 'user-agent': 'vercel-cron/1.0', 'x-vercel-cron-schedule': RETRY_CRON_SCHEDULE };
 
 describe('bounded retry run evidence', () => {
   it('bounds the combined two-queue scan and reaches overflow entries on later runs', async () => {
@@ -44,7 +44,7 @@ describe('bounded retry run evidence', () => {
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ retried: 1, scanned: 1 });
       const run = await harness.deps.store.get<RetryRun>('mailRetryRuns/vercel');
-      expect(run).toMatchObject({ requestId: response.headers.get('x-request-id'), source: 'vercel', schedule: '0 12 * * *', status: 'succeeded', retried: 1, scanned: 1, startedAt: '2026-03-01T15:00:00.000Z', completedAt: '2026-03-01T15:00:00.000Z' });
+      expect(run).toMatchObject({ requestId: response.headers.get('x-request-id'), source: 'vercel', schedule: RETRY_CRON_SCHEDULE, status: 'succeeded', retried: 1, scanned: 1, startedAt: '2026-03-01T15:00:00.000Z', completedAt: '2026-03-01T15:00:00.000Z' });
       expect(run?.durationMs).toBeGreaterThanOrEqual(0);
       expect(JSON.stringify(run)).not.toMatch(/retry-secret|queued@example.com/);
 

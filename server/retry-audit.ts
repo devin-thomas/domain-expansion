@@ -1,10 +1,12 @@
 import { retryDueNotifications } from './admission.js';
 import type { AppDeps } from './http.js';
 
+export const RETRY_CRON_SCHEDULE = '45 14 * * *';
+
 export interface RetryRun {
   requestId: string;
   source: 'vercel' | 'operator';
-  schedule: '0 12 * * *' | null;
+  schedule: typeof RETRY_CRON_SCHEDULE | null;
   status: 'running' | 'succeeded' | 'failed';
   startedAt: string;
   completedAt?: string;
