@@ -1,0 +1,61 @@
+name: CLI portability
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cli-portability.yml'
+      - 'cli/**'
+      - 'server/**'
+      - 'shared/**'
+      - 'tests/api/**'
+      - 'tests/cli/**'
+      - 'tests/helpers.ts'
+      - 'package*.json'
+      - 'vite.config.ts'
+  pull_request:
+    paths:
+      - '.github/workflows/cli-portability.yml'
+      - 'cli/**'
+      - 'server/**'
+      - 'shared/**'
+      - 'tests/api/**'
+      - 'tests/cli/**'
+      - 'tests/helpers.ts'
+      - 'package*.json'
+      - 'vite.config.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  macos-cli:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.18.0'
+      - name: Record platform
+        run: |
+          sw_vers
+          uname -m
+          node --version
+          npm --version
+      - name: Install dependencies
+        run: npm ci
+      - name: Install documented local command
+        run: npm link
+      - name: Check installed command
+        run: |
+          domain-expansion --help
+          domain-expansion --version
+      - name: Verify CLI and API contracts
+        run: npm run test:api
+      - name: Remove local command
+        if: always()
+        run: npm unlink -g domain-expansion
