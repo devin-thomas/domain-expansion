@@ -78,9 +78,16 @@ test('pending double Add submits once and lost response retries the same selecti
   await page.getByTestId('ai-input').fill('domain to add once');
   await page.getByTestId('ai-submit').click();
   await expect(page.locator('article')).toContainText('reviewed.example');
+  await expect(page.getByRole('checkbox', { name: 'Include proposal 1: reviewed.example' })).toBeChecked();
   await page.getByLabel('Domain').last().fill('edited-review.example');
+  const includeProposal = page.getByRole('checkbox', { name: 'Include proposal 1: edited-review.example' });
+  await expect(includeProposal).toBeChecked();
 
   const addButton = page.getByTestId('ai-add-selected');
+  await includeProposal.uncheck();
+  await expect(addButton).toBeDisabled();
+  await includeProposal.check();
+  await expect(addButton).toBeEnabled();
   await addButton.dblclick();
   await expect.poll(() => batchCalls.length).toBe(1);
   await expect(addButton).toBeDisabled();

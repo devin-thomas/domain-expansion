@@ -53,7 +53,7 @@ npm run openapi
 npm run domain-expansion -- help
 ```
 
-`lint` is `tsc --noEmit`. The production build writes the client bundle and `dist/server.cjs`, then scans the client bundle for server secrets and the test sign-in control. `VITE_TEST_AUTH` and `DOMAIN_EXPANSION_TEST_AUTH` are test-only and are refused when `APP_ENV=production`.
+`lint` is `tsc --noEmit`. The production build writes public client files to `dist/` and the local Node server bundle to ignored `.server-build/`, outside Vercel's static output. The build checks that server artifacts are absent from `dist/` and scans client assets for server secrets and the test sign-in control. `VITE_TEST_AUTH` and `DOMAIN_EXPANSION_TEST_AUTH` are test-only and are refused when `APP_ENV=production`.
 
 Public Firebase web config belongs in `VITE_*`. Service-account JSON, Resend, BYOK, owner Gemini, and cursor secrets stay server-side. `.env.example` contains placeholders only.
 

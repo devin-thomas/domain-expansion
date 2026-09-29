@@ -23,6 +23,11 @@ for (const file of walk(path.join(root, 'src'))) {
 }
 
 const assets = walk(path.join(root, 'dist', 'assets')).filter((file) => file.endsWith('.js'));
+for (const name of ['server.cjs', 'server.cjs.map']) {
+  if (fs.existsSync(path.join(root, 'dist', name))) {
+    failures.push(`server runtime artifact is in the public output: dist/${name}`);
+  }
+}
 const banned = ['firebase-admin', 'BEGIN PRIVATE KEY', 'OWNER_GEMINI_API_KEY', 'RESEND_API_KEY', 'BYOK_KEYRING', 'FIREBASE_SERVICE_ACCOUNT_JSON', 'data-testid="test-sign-in"'];
 for (const file of assets) {
   const text = fs.readFileSync(file, 'utf8');

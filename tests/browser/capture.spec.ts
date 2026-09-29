@@ -79,6 +79,16 @@ test('keyboard can reach the five quick-add fields', async ({ page }) => {
   await expect(page.getByTestId('quick-add-registrar')).toBeFocused();
 });
 
+test('settings names the Gemini key and announces Google integration feedback', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('test-sign-in').click();
+  await page.getByTestId('nav-settings').click();
+
+  await expect(page.getByLabel('Gemini API key', { exact: true })).toHaveAttribute('type', 'password');
+  await page.getByRole('button', { name: 'Preview Calendar reminder' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Choose a domain before creating an external reminder.' })).toBeVisible();
+});
+
 test('archived records can be found and restored through the connected UI', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('test-sign-in').click();
