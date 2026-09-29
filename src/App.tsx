@@ -756,7 +756,7 @@ function AiCapture({ settings, onSaved, onOpenExisting, onDirty }: { settings: A
       <p className="text-xs text-zinc-500">Proposals are not saved until you add them. Manual Quick Add stays available.</p>
       {drafts.map((draft, index) => (
         <article key={`${draft.name}-${index}`} className="rounded-lg border border-zinc-800 p-3 text-sm">
-          <label className="flex items-center gap-2"><input type="checkbox" checked={!draft.excluded} onChange={(event) => setDrafts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, excluded: !event.target.checked } : row))} /> Include</label>
+          <label className="flex items-center gap-2"><input type="checkbox" aria-label={`Include proposal ${index + 1}: ${draft.name || 'name needed'}`} checked={!draft.excluded} onChange={(event) => setDrafts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, excluded: !event.target.checked } : row))} /> Include</label>
           <p className="mt-2">{draft.name || 'Name needed'} · {draft.registrar || 'Registrar unknown'} · {draft.expirationDate || 'Date needed'} · {draft.renewalCostMinor === null ? 'Cost unknown' : formatMinor(draft.renewalCostMinor, (draft.currency || draft.suggestedCurrency || settings.defaultCurrency) as Currency)} · {draft.renewalIntent || 'renew'}</p>
           {draft.proposals.map((proposal) => <p key={proposal.field} className="text-amber-200">{proposal.reason}</p>)}
           {draft.warnings.map((warning) => <p key={warning} className="text-rose-300">{warning}</p>)}
@@ -1049,7 +1049,7 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
         <p className="text-sm text-zinc-400">{credential ? credential.configured ? `Configured (${credential.source})` : 'No key configured' : 'Checking key status…'}</p>
         <p className="text-sm text-zinc-400">AI Quick Add sends the text you submit to Google using your key. Domain Expansion processes that key and text on the server. Google’s terms and billing apply. This is not a promise that Google will not use the data to improve products. Manual capture does not need a key.</p>
         <label className="text-sm"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /> I understand and want to store a key</label>
-        <input className="field" type="password" autoComplete="off" value={key} onChange={(event) => setKey(event.target.value)} placeholder="Paste key" />
+        <label className="text-sm">Gemini API key<input className="field" type="password" autoComplete="off" value={key} onChange={(event) => setKey(event.target.value)} placeholder="Paste key" /></label>
         <button className="min-h-11 rounded-md border border-zinc-700" type="submit">Save key</button>
         {credential?.source === 'byok' ? <button className="min-h-11 rounded-md border border-rose-800 text-rose-300" type="button" onClick={() => void removeKey()}>Remove stored key</button> : null}
       </form>
@@ -1085,7 +1085,7 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
           <p className="text-xs text-zinc-400">The selected file is downloaded only after you choose Preview. The existing validated import preview must be committed separately.</p>
           <button type="button" className="min-h-11 rounded-md border border-zinc-700 px-3 disabled:opacity-50" data-testid="preview-drive-backup" disabled={integrationBusy || !selectedDriveBackup} onClick={() => void previewDriveBackup()}>Preview selected backup</button>
         </div> : null}
-        {integrationNote ? <p className="text-sm text-zinc-300">{integrationNote}</p> : null}
+        {integrationNote ? <p role="status" className="text-sm text-zinc-300">{integrationNote}</p> : null}
       </section>
       <Transfer domains={domains} onChanged={onChanged} driveRestoreContent={driveRestoreContent} />
       {message ? <p role="status" className="text-sm text-emerald-300">{message}</p> : null}
