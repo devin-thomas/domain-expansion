@@ -1,20 +1,20 @@
 # Domain Expansion release
 
 **State:** blocked — Technical release live; final acceptance needs user participation
-**Updated:** Sep 29, 2026, 2:00 PM America/Chicago
+**Updated:** Sep 29, 2026, 2:23 PM America/Chicago
 **Task ID:** `domain-expansion-release`
 **Repository:** `devin-thomas/domain-expansion`, branch `main`
 **Application commit:** `4753e1b9bc214e9c4dab11bac5992fb500c2a83c`
 
 ## Action required
 
-**Your participation is required to finish the release.** DEW-016 and DEW-017 remain blocked on Search Console ownership, Google consent and provider actions, Galaxy capture/edit, a screen-reader walkthrough, and actual 200% browser zoom. The shared Google project's scope declarations also need reconciliation before publication.
-Smallest action: Reply 'resume final acceptance' when ready for one coordinated pass through the remaining Google and device checks.
+**A Galaxy browser result is needed to diagnose dashboard access; final release acceptance also needs your participation.** The Galaxy cannot display the private dashboard, although the host-side HTTPS endpoint passes. DEW-016 and DEW-017 remain blocked on Search Console ownership, Google consent and provider actions, Galaxy capture/edit, a screen-reader walkthrough, and actual 200% browser zoom.
+Smallest action: Open the exact private dashboard link from chat in Galaxy Chrome, including port :8445, and report the error or page shown. Reply 'resume final acceptance' when ready for the remaining release checks.
 
 ## Current activity
 
-The technical release is live, but the goal is blocked at final acceptance. No autonomous checks are running while the required user and provider actions remain deferred.
-Next checkpoint: When the user resumes final acceptance, reconcile Google ownership/scopes and guide one consolidated provider and device walkthrough.
+Investigating Galaxy access to the private dashboard. The dashboard server and Tailscale Serve route are healthy on the host; the Galaxy is online on the same tailnet. Final release acceptance remains blocked.
+Next checkpoint: Use the Galaxy Chrome error or page result to isolate the remaining phone-side dashboard issue; resume Google and device acceptance when the user requests it.
 
 ## Milestones
 
@@ -35,6 +35,7 @@ Next checkpoint: When the user resumes final acceptance, reconcile Google owners
 - **Monitoring:** An earlier deployment exposed the compiled server bundle and source map. The current production aliases no longer return those assets; route checks do not establish whether prior copies were downloaded or whether credentials were embedded.
 - **Monitoring:** Earlier Firebase and Resend messages were observed in spam. Future inbox placement is unverified.
 - **Agent handling:** Three screen-reader source fixes passed automated checks; no live screen-reader walkthrough is claimed.
+- **Monitoring:** Galaxy dashboard access was reported unsuccessful. Host-side HTTPS returned 200 with valid TLS and matching dashboard identity; a Galaxy Chrome visit has not been verified.
 
 ## Decisions
 
@@ -49,10 +50,11 @@ Next checkpoint: When the user resumes final acceptance, reconcile Google owners
 
 ## Next up
 
-1. Wait for the user's 'resume final acceptance' reply; do not repeat background checks.
-2. Reconcile OAuth declarations and Search Console ownership, then perform the approved Google consent and provider actions.
-3. Complete Galaxy capture/edit, screen-reader, and actual browser-level zoom checks; close DEW-016/017 only with evidence.
-4. Keep the dashboard available for the final handoff while the host is awake.
+1. Use the Galaxy Chrome result to diagnose private dashboard access; retain the existing verified host-side Serve route.
+2. Wait for the user's 'resume final acceptance' reply; do not repeat background checks.
+3. Reconcile OAuth declarations and Search Console ownership, then perform the approved Google consent and provider actions.
+4. Complete Galaxy capture/edit, screen-reader, and actual browser-level zoom checks; close DEW-016/017 only with evidence.
+5. Keep the dashboard available for the final handoff while the host is awake.
 
 ## Activity log
 
@@ -67,12 +69,13 @@ Next checkpoint: When the user resumes final acceptance, reconcile Google owners
 - 2026-09-29T18:32:17Z: Deployed build-boundary repair 4753e1b as READY dpl_2ZWRrTPU8zkeXB2bcsg6yZg9ZcBb. The canonical and Vercel production aliases now return HTML for former server-artifact paths; six canonical routes returned HTTP 200. Browser accessibility regressions passed 19/19.
 - 2026-09-29T18:40:41Z: Read-only Google provider inspection confirmed Search Console marks devthomas.site Not verified, OAuth remains External/Testing with one test user, and shared scope declarations omit calendar.events.owned while retaining calendar.events and gmail.readonly. No provider settings or access were changed.
 - 2026-09-29T19:00:23Z: Corrected the dashboard after the goal entered blocked status: final acceptance now shows user participation required, with one resume action and the outstanding provider/device gates listed.
+- 2026-09-29T19:23:26Z: The user reported Galaxy dashboard access failure. Host loopback and private HTTPS endpoints returned the expected dashboard, HTTPS returned 200 with valid TLS through the tailnet IP, and Tailscale showed the Galaxy online on the same account. Galaxy Chrome behavior is pending.
 
 ## Walk-away snapshot
 
-Build-boundary source 4753e1b was served by READY deployment dpl_2ZWRrTPU8zkeXB2bcsg6yZg9ZcBb on the canonical alias. Six routes returned HTTP 200; former public server-artifact paths returned HTML on both production aliases. Underlying application source 2c1cdc3 passed the eight-group live backend verifier, API/CLI 77/77, unit 65/65, and hosted macOS CLI. Emulator 8/8 passed on e644c23; browser 19/19 and lint/build passed on 4753e1b. Unfinished: Final Google provider and device/accessibility acceptance are blocked pending the user's participation. Next safe step: Wait for the user's 'resume final acceptance' reply, then coordinate the remaining Google and device checks without repeating completed technical work.
-Touched: Build-boundary source 4753e1b is on origin/main. The dashboard folder is tracked; Tailscale Serve points to its dedicated loopback static server. No private host details or secrets are in the repository snapshot. Expected processes: One loopback Python static server and one Tailscale Serve mapping; local runtime metadata records their details. User action: Reply 'resume final acceptance' when ready for the coordinated final checks.
+Build-boundary source 4753e1b was served by READY deployment dpl_2ZWRrTPU8zkeXB2bcsg6yZg9ZcBb on the canonical alias. Six routes returned HTTP 200; former public server-artifact paths returned HTML on both production aliases. Underlying application source 2c1cdc3 passed the eight-group live backend verifier, API/CLI 77/77, unit 65/65, and hosted macOS CLI. Emulator 8/8 passed on e644c23; browser 19/19 and lint/build passed on 4753e1b. Unfinished: Galaxy dashboard access diagnosis awaits the Chrome result; final Google provider and device/accessibility acceptance remain blocked pending the user's participation. Next safe step: Interpret the Galaxy Chrome result for the exact private dashboard link, then wait for 'resume final acceptance' before coordinating release checks.
+Touched: Build-boundary source 4753e1b is on origin/main. The dashboard folder is tracked; Tailscale Serve points to its dedicated loopback static server. No private host details or secrets are in the repository snapshot. Expected processes: One loopback Python static server and one Tailscale Serve mapping; local runtime metadata records their details. User action: Report what Galaxy Chrome shows at the exact private dashboard link; reply 'resume final acceptance' when ready for the coordinated release checks.
 
 ## Delivery
 
-Portable repository snapshot and private Tailscale Serve. Tailscale: Host-side private HTTPS endpoint verified with matching dashboard identity and timestamp; the tailnet URL is shared in chat, not committed. Persistence: Dashboard source and state are tracked on main; this update is committed as a checkpoint. Last verified: 2026-09-29T19:00:23Z; dashboard action state reconciled with the blocked goal. Earlier evidence includes READY canonical Vercel alias, six live routes, public server-artifact repair, browser 19/19, emulator 8/8, and the underlying implementation verifier. Limitation: Tailnet access depends on this host staying awake and connected. A second-device dashboard visit has not been independently tested.
+Portable repository snapshot and private Tailscale Serve. Tailscale: Host-side private HTTPS endpoint verified with matching dashboard identity and timestamp; the tailnet URL is shared in chat, not committed. Persistence: Dashboard source and state are tracked on main; this update is committed as a checkpoint. Last verified: 2026-09-29T19:23:26Z; local and tailnet HTTPS dashboard identity verified, with HTTP 200 and valid TLS through the tailnet IP. Earlier evidence includes READY canonical Vercel alias, six live routes, public server-artifact repair, browser 19/19, emulator 8/8, and the underlying implementation verifier. Limitation: Galaxy dashboard access is reported failing; the exact browser result is pending. Host-side verification cannot establish phone rendering or reachability. Tailnet access also depends on this host staying awake and connected.
