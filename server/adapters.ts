@@ -60,9 +60,10 @@ export function createMemoryDirectory(): IdentityDirectory & { users: { email: s
 export function createAdminDirectory(): IdentityDirectory {
   return {
     async resolve(email: string) {
-      const admin = await import('firebase-admin');
-      if (admin.apps.length === 0) admin.initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID });
-      return resolveFirebaseUser(admin.auth(), email);
+      const { getApps, initializeApp } = await import('firebase-admin/app');
+      const { getAuth } = await import('firebase-admin/auth');
+      if (getApps().length === 0) initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID });
+      return resolveFirebaseUser(getAuth(), email);
     },
   };
 }

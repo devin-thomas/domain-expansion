@@ -110,13 +110,14 @@ async function authenticateTest(token: string, store: DocStore, config: Config, 
 }
 
 async function authenticateFirebase(token: string, store: DocStore, config: Config, now: Date): Promise<Actor> {
-  const admin = await import('firebase-admin');
-  if (admin.apps.length === 0) {
-    admin.initializeApp({ projectId: config.projectId });
+  const { getApps, initializeApp } = await import('firebase-admin/app');
+  const { getAuth } = await import('firebase-admin/auth');
+  if (getApps().length === 0) {
+    initializeApp({ projectId: config.projectId });
   }
   let decoded: { uid: string; email?: string; email_verified?: boolean; auth_time?: number; aud?: string; firebase?: { sign_in_provider?: string } };
   try {
-    decoded = await admin.auth().verifyIdToken(token, true);
+    decoded = await getAuth().verifyIdToken(token, true);
   } catch {
     throw new ApiError(401, 'unauthorized', 'Sign in to continue');
   }

@@ -69,17 +69,18 @@ export class MemoryStore implements DocStore {
 }
 
 export async function createFirestoreStore(): Promise<DocStore> {
-  const admin = await import('firebase-admin');
-  if (admin.apps.length === 0) {
+  const { getApps, initializeApp, cert } = await import('firebase-admin/app');
+  const { getFirestore, FieldPath } = await import('firebase-admin/firestore');
+  if (getApps().length === 0) {
     const projectId = process.env.FIREBASE_PROJECT_ID || 'demo-domain-expansion';
     const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
     if (json) {
-      admin.initializeApp({ credential: admin.credential.cert(JSON.parse(json) as Record<string, string>), projectId });
+      initializeApp({ credential: cert(JSON.parse(json) as Record<string, string>), projectId });
     } else {
-      admin.initializeApp({ projectId });
+      initializeApp({ projectId });
     }
   }
-  const db = admin.firestore();
+  const db = getFirestore();
   return {
     async get<T>(path: string) {
       const snap = await db.doc(path).get();
@@ -94,7 +95,7 @@ export async function createFirestoreStore(): Promise<DocStore> {
         return options.limit === undefined ? rows : rows.slice(0, options.limit);
       }
       const collectionPath = prefix.replace(/\/$/, '');
-      let query: FirebaseFirestore.Query = db.collection(collectionPath).orderBy(admin.firestore.FieldPath.documentId());
+      let query: FirebaseFirestore.Query = db.collection(collectionPath).orderBy(FieldPath.documentId());
       if (options.startAfter) query = query.startAfter(options.startAfter.split('/').at(-1)!);
       if (options.limit !== undefined) query = query.limit(options.limit);
       const snap = await query.get();
