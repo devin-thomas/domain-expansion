@@ -1,27 +1,28 @@
 # Domain Expansion release
 
-**State:** working — Technical release and private dashboard delivery  
-**Updated:** Sep 29, 2026, 12:27 PM America/Chicago  
-**Task ID:** `domain-expansion-release`  
-**Repository:** `devin-thomas/domain-expansion`, branch `main`  
+**State:** healthy — Technical release live; human acceptance deferred
+**Updated:** Sep 29, 2026, 12:36 PM America/Chicago
+**Task ID:** `domain-expansion-release`
+**Repository:** `devin-thomas/domain-expansion`, branch `main`
 **Application commit:** `bc5601eb4e969a9d8c19f6eada13d8c499629341`
 
 ## Action required
 
-**No action required from you right now.** You chose to defer the remaining human acceptance checks until the final handoff. Technical release and dashboard work are continuing.
+**No action required from you right now.** You chose to defer the remaining human acceptance checks until the final handoff. No further checks are being requested now.
 Smallest action: None now. Review the deferred checks at final handoff.
 
 ## Current activity
 
-The three screen-reader source fixes are committed and pushed. Lint, build, and all 18 browser tests pass. The private dashboard is being prepared for Tailscale Serve.
-Next checkpoint: Commit this dashboard snapshot, verify its local endpoint, then configure and verify the private tailnet URL.
+The technical release and private dashboard are live. The three screen-reader fixes pass lint, build, and all 18 browser tests; Chrome's accessibility tree confirms the Gemini key label.
+Next checkpoint: At final handoff, revisit the explicitly deferred human and Google provider checks. No immediate user action is needed.
 
 ## Milestones
 
-- **complete — Canonical application and API release.** The latest recorded Vercel release is READY as dpl_BpiFAQzwJmMbzyW9WW1vMrzUTgYm. The six public routes returned HTTP 200. Cloudflare Worker f8e55e50-03d0-495f-b9e1-12f5e50feba9 serves the /api proxy.
+- **complete — Canonical application and API release.** The accessibility source commit bc5601e has a successful Vercel deployment status and its Gemini key label was observed on the canonical host. All six canonical routes returned HTTP 200 in the preceding production check. Cloudflare Worker f8e55e50-03d0-495f-b9e1-12f5e50feba9 serves the /api proxy.
 - **complete — Backend and production verification.** The eight-group production verifier passed on the recorded release; API/CLI 77/77, unit 63/63, browser 18/18, lint, build, boundary, and native-runtime checks passed. Firestore emulator 8/8 is retained from the prior run.
-- **complete — Desktop, CLI, and reported device acceptance.** Windows and hosted macOS CLI acceptance passed. The user reported iPhone 16 Pro Safari sign-in, capture, and edit success, and Galaxy S21 Ultra Chrome sign-in success.
+- **complete — Desktop/CLI and completed device checks.** Windows and hosted macOS CLI acceptance passed. The user reported iPhone 16 Pro Safari sign-in, capture, and edit success, and Galaxy S21 Ultra Chrome sign-in success.
 - **complete — UI accessibility source fixes.** Gemini key labeling, per-proposal Include labels, and live Google result announcements are committed as bc5601e; lint, build, and browser 18/18 pass. The human screen-reader and browser-zoom walkthroughs remain deferred.
+- **complete — Private release dashboard.** The portable dashboard is tracked in the canonical repository. Its dedicated loopback server and Tailscale Serve endpoint passed matching task-ID and timestamp checks; Chrome rendered the private page.
 - **blocked — Google provider acceptance and publication.** Google consent and Calendar/Tasks/Sheets/Drive actions, OAuth publication or verification, and Search Console/domain ownership evidence are still pending. No Google provider grant or action is claimed.
 
 ## Open gates
@@ -48,23 +49,22 @@ Next checkpoint: Commit this dashboard snapshot, verify its local endpoint, then
 
 ## Next up
 
-1. Commit and verify the dashboard files in the canonical repository.
-2. Serve and verify the dashboard privately over Tailscale.
-3. At final handoff, perform the deferred Android capture/edit, screen-reader, and actual browser-level zoom checks.
-4. At final handoff, decide whether to authorize Google consent, provider actions, publication, and ownership verification.
-5. Record the final technical release and delivery evidence.
+1. At final handoff, perform the deferred Android capture/edit, screen-reader, and actual browser-level zoom checks.
+2. At final handoff, decide whether to authorize Google consent, provider actions, publication, and ownership verification.
+3. Keep the dashboard available for the final handoff while the host is awake.
 
 ## Activity log
 
 - 2026-09-29T17:23:31Z: Created a sanitized portable release dashboard from the current release record; live checks returned HTTP 200 for all six canonical routes.
 - 2026-09-29T17:23:31Z: Recorded three screen-reader issues for active source remediation and preserved the user's decision to defer remaining human checks until final handoff.
 - 2026-09-29T17:27:54Z: Committed and pushed accessibility fixes as bc5601e; lint, build, and all 18 browser tests passed.
+- 2026-09-29T17:34:27Z: Verified Tailscale API/device status, local dashboard endpoint, private HTTPS Serve endpoint, and rendered Chrome view. Vercel commit status succeeded; the live settings accessibility tree named the Gemini key field.
 
 ## Walk-away snapshot
 
-Canonical application, API, public routes, and edge proxy are live according to the release record; all six routes returned HTTP 200 in the current read-only check. Unfinished: Private dashboard delivery is being prepared; Google and remaining device/accessibility acceptance are deferred. Next safe step: Commit the reviewed dashboard files, start its loopback listener, and verify the Tailscale endpoint.
-Touched: Accessibility source commit bc5601e is on origin/main. Dashboard files are newly created. No dashboard service is running yet. Expected processes: None for this dashboard yet. User action: None until final handoff.
+The earlier six-route production check returned HTTP 200; the current live Chrome session confirmed the deployed app UI and Gemini key label. The dashboard local and private endpoints passed fresh identity and timestamp checks. Unfinished: Google provider and remaining device/accessibility acceptance are deferred by user instruction. Next safe step: At final handoff, review the deferred checks and decide whether to perform the Google provider actions.
+Touched: Accessibility source commit bc5601e is on origin/main. The dashboard folder is tracked; Tailscale Serve points to its dedicated loopback static server. No private host details or secrets are in the repository snapshot. Expected processes: One loopback Python static server and one Tailscale Serve mapping; local runtime metadata records their details. User action: None until final handoff.
 
 ## Delivery
 
-Portable repository snapshot; private Tailscale delivery in progress. Tailscale: Local device online and API verification passed; dashboard listener and Serve endpoint are not configured yet. Persistence: Dashboard snapshot is prepared for a path-scoped commit. Last verified: 2026-09-29T17:27:54Z; source tests passed and six canonical routes returned HTTP 200 in the preceding check. Limitation: The private dashboard URL is not verified yet.
+Portable repository snapshot and private Tailscale Serve. Tailscale: Host-side private HTTPS endpoint verified with matching dashboard identity and timestamp; the tailnet URL is shared in chat, not committed. Persistence: Dashboard source and state are tracked on main; this update is committed as a checkpoint. Last verified: 2026-09-29T17:36:02Z; local and private HTTPS dashboard endpoints, rendered Chrome view, Vercel commit status, and live Gemini key label. Limitation: Tailnet access depends on this host staying awake and connected. A second-device dashboard visit has not been independently tested.
