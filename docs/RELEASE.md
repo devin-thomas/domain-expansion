@@ -6,7 +6,7 @@ Status checked 2026-09-29. The canonical application and API are live. Source `f
 
 The canonical application is the React/TypeScript/Vite project in this repository. Firestore is the account portfolio store when `DATA_STORE=firestore`; browser clients have no direct Firestore access, and server handlers must enforce identity, membership, ownership, and token scope. Google Drive app data is not a database and no legacy migration is in scope.
 
-The latest API/CLI run passed 32/32, with lint, production build, client-boundary checks, and native compiled-runtime initialization passing. The unchanged frontend and storage baseline passed unit (32 tests), Firestore emulator (6 tests), and browser (10/10) checks. Focused payment-field checks passed 10/10 and Google-integration checks passed 12/12. These local checks do not prove all live provider behavior or production acceptance.
+The latest API/CLI run passed 32/32. After the September 29 Google-readiness changes, unit checks passed 36/36 (including 16 Google integration checks), lint, production build, client-boundary checks, and native compiled-runtime initialization passed. A focused Chrome browser check passed for the anonymous homepage-to-privacy flow at a phone viewport. The unchanged baseline also passed Firestore emulator (6 tests) and browser (10/10) checks. Earlier focused payment-field checks passed 10/10. These local checks do not prove all live provider behavior or production acceptance.
 
 ## Verified provider and repository setup
 
@@ -25,6 +25,8 @@ The latest API/CLI run passed 32/32, with lint, production build, client-boundar
 - Billing/quota: the project remains on Firebase Spark at $0/month. Firebase currently limits email-link sign-in messages to 5/day on Spark; the separate sign-in-link generation limit is 20,000/day. The product uses sent email links, so the 5/day mail limit is the operative cap. No billing instrument or plan change is authorized. Recheck the [official Firebase Authentication limits](https://firebase.google.com/docs/auth/limits) before release because quotas can change.
 
 ## Production gate
+
+Google preparation is recorded in [the OAuth verification packet](GOOGLE-OAUTH-VERIFICATION.md). On September 29, the homepage gained a direct privacy link and product description, the notice gained specific OAuth data handling and Limited Use disclosures, and Calendar narrowed its scope to `calendar.events.owned`. Provider declaration reconciliation, Search Console ownership evidence, real grants/actions, demonstration evidence, and publication/review remain unverified. This preparation does not close DEW-017.
 
 For Vercel origin `e8ee8e2` and Worker version `f55846c2-a646-4499-be51-2b06b46eb51b`, these canonical-host checks passed:
 

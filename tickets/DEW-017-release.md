@@ -34,6 +34,8 @@ Blocked on 2026-09-29. The active web repository is `devin-thomas/domain-expansi
 
 Missing inputs:
 
+Google consent/publication preparation and remaining provider verification requirements are recorded in [the OAuth verification packet](../docs/GOOGLE-OAUTH-VERIFICATION.md). The September 29 source adds a direct homepage privacy link, specific OAuth/Limited Use disclosures, and the narrower `calendar.events.owned` request. Search Console ownership and any required demonstration/submission/review have not been verified. These are provider release gates, not proof supplied by local adapter tests.
+
 - Complete real Google account selection and Calendar approval, then exercise authorized provider actions for Calendar, Tasks, Sheets, and Drive. OAuth branding remains saved in owner-only Testing and has not been published; no consent/action is granted yet.
 
 Automated and live evidence recorded in the other tickets includes latest source API/CLI (32/32), unit (32), Firestore emulator (6), browser (10/10), focused Google integration (12/12), lint, production build, all eight production-verifier groups, canonical route checks, and conditional-write checks through Cloudflare. Owner sign-in, identity configuration, explicit AI review/save, and optional purchase-field persistence passed. The user reported phone/second-device sign-in, capture, and edit success on 2026-09-29; device model and browser were unspecified. Remaining gates are Google consent/provider actions. Initial messages landed in spam; future placement is unverified. The latest source deployment is READY. Rollback steps are in `docs/RELEASE.md`.
