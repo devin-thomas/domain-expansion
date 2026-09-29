@@ -1,0 +1,13 @@
+{
+  "name": "domain-expansion-api",
+  "main": "api-proxy.ts",
+  "account_id": "f81d8a09a3b225b740c17f5a39f6cf80",
+  "compatibility_date": "2026-09-28",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    { "pattern": "domains.devthomas.site/api/*", "zone_id": "ecab0263f40b292c8066af56431ce826" },
+    { "pattern": "domains.devthomas.site/api", "zone_id": "ecab0263f40b292c8066af56431ce826" }
+  ],
+  "observability": { "enabled": false }
+}

@@ -1,11 +1,13 @@
 import { next } from '@vercel/functions';
 
 export const FORWARDED_IF_MATCH_HEADER = 'x-domain-expansion-if-match';
+export const EDGE_IF_MATCH_HEADER = 'x-domain-expansion-revision';
 
 export function forwardApiPreconditionHeaders(source: Headers): Headers {
   const headers = new Headers(source);
-  const ifMatch = headers.get('if-match');
+  const ifMatch = headers.get('if-match') ?? headers.get(EDGE_IF_MATCH_HEADER);
   headers.delete(FORWARDED_IF_MATCH_HEADER);
+  headers.delete(EDGE_IF_MATCH_HEADER);
   headers.delete('if-match');
   if (ifMatch !== null) headers.set(FORWARDED_IF_MATCH_HEADER, ifMatch);
   return headers;
