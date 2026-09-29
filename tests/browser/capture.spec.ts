@@ -16,6 +16,9 @@ test('quick add stays sparse on a phone-sized and desktop viewport', async ({ pa
   await page.goto('/');
   await page.getByTestId('test-sign-in').click();
   await page.getByTestId('empty-add').click();
+  await expect(page.getByRole('group', { name: 'Capture mode', exact: true })).toBeVisible();
+  await expect(page.getByTestId('capture-mode-quick')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('capture-mode-ai')).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByTestId('quick-add-domain')).toBeVisible();
   await expect(page.getByTestId('quick-add-registrar')).toBeVisible();
   await expect(page.getByTestId('quick-add-date')).toBeVisible();
@@ -40,7 +43,7 @@ test('quick add stays sparse on a phone-sized and desktop viewport', async ({ pa
   await expect(page.getByText('Private Firestore', { exact: true })).toBeVisible();
   await expect(page.getByText(/app data/i)).toHaveCount(0);
 });
-test('five fields stay reachable at 200 percent zoom and AI review does not save by itself', async ({ page }) => {
+test('five fields stay reachable at 200 percent CSS scale and AI review does not save by itself', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await page.getByTestId('test-sign-in').click();
@@ -58,6 +61,8 @@ test('five fields stay reachable at 200 percent zoom and AI review does not save
     document.documentElement.style.zoom = '1';
   });
   await page.getByTestId('capture-mode-ai').click();
+  await expect(page.getByTestId('capture-mode-ai')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('capture-mode-quick')).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByTestId('ai-input')).toBeVisible();
   await expect(page.getByTestId('quick-add-save')).toHaveCount(0);
   await expect(page.getByTestId('ai-add-selected')).toHaveCount(0);
@@ -100,6 +105,7 @@ test('settings connects token management and import commit to the portfolio', as
   await page.goto('/');
   await page.getByTestId('test-sign-in').click();
   await page.getByTestId('nav-settings').click();
+  await page.getByRole('textbox', { name: 'Token name', exact: true }).fill('Browser automation');
   await page.getByRole('button', { name: 'Create token' }).click();
   await expect(page.getByText(/dew1\./)).toBeVisible();
   await page.getByRole('button', { name: 'Revoke' }).click();

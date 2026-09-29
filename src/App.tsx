@@ -538,9 +538,9 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
           <h2 id={titleId} className="text-lg font-semibold">{initial ? 'Edit domain' : 'Add domain'}</h2>
           <button className="min-h-11 px-2" onClick={requestClose}>Close</button>
         </div>
-        <div className="mb-4 flex gap-2" role="tablist">
-          <button type="button" className={`min-h-11 rounded-md px-3 ${mode === 'quick' ? 'bg-zinc-800' : ''}`} data-testid="capture-mode-quick" onClick={() => switchMode('quick')}>Quick Add</button>
-          <button type="button" className={`min-h-11 rounded-md px-3 ${mode === 'ai' ? 'bg-zinc-800' : ''}`} data-testid="capture-mode-ai" onClick={() => switchMode('ai')}>✨ AI Quick Add</button>
+        <div className="mb-4 flex gap-2" role="group" aria-label="Capture mode">
+          <button type="button" aria-pressed={mode === 'quick'} className={`min-h-11 rounded-md px-3 ${mode === 'quick' ? 'bg-zinc-800' : ''}`} data-testid="capture-mode-quick" onClick={() => switchMode('quick')}>Quick Add</button>
+          <button type="button" aria-pressed={mode === 'ai'} className={`min-h-11 rounded-md px-3 ${mode === 'ai' ? 'bg-zinc-800' : ''}`} data-testid="capture-mode-ai" onClick={() => switchMode('ai')}>✨ AI Quick Add</button>
         </div>
         {mode === 'ai' ? <AiCapture settings={settings} onSaved={onSaved} onOpenExisting={onOpenExisting} onDirty={mark} /> : (
           <form className="grid gap-3" onSubmit={save}>
@@ -1018,7 +1018,7 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
       <form className="grid gap-3" onSubmit={createToken}>
         <h2 className="text-lg font-semibold">Developer tokens</h2>
         <p className="text-sm text-zinc-400">Choose each permission independently. The secret is shown once.</p>
-        <input className="field" value={tokenName} onChange={(event) => setTokenName(event.target.value)} />
+        <label className="text-sm">Token name<input className="field" value={tokenName} onChange={(event) => setTokenName(event.target.value)} /></label>
         <div className="flex flex-wrap gap-4 text-sm">{['domains:read', 'domains:write', 'domains:delete'].map((scope) => <label key={scope}><input type="checkbox" checked={tokenScopes.includes(scope)} onChange={(event) => setTokenScopes((current) => event.target.checked ? [...current, scope] : current.filter((item) => item !== scope))} /> {scope}</label>)}</div>
         <label className="text-sm">Expires in days<input className="field" type="number" min="1" max="365" value={tokenDays} onChange={(event) => setTokenDays(Number(event.target.value))} /></label>
         <button className="min-h-11 rounded-md border border-zinc-700" type="submit">Create token</button>
