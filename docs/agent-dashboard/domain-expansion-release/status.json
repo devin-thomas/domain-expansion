@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "task_id": "domain-expansion-release",
-  "updated_at": "2026-09-29T18:10:51Z",
+  "updated_at": "2026-09-29T18:18:37Z",
   "title": "Domain Expansion release",
   "overall_state": "healthy",
   "phase": "Technical release live; human acceptance deferred",
@@ -17,7 +17,7 @@
     "smallest_user_action": "None now. Review the deferred checks at final handoff."
   },
   "current_activity": {
-    "operation": "The technical release and private dashboard are live. The eight-group production verifier passed on the current application implementation; API/CLI 77/77, unit 65/65, browser 18/18, lint, build, and hosted macOS CLI also pass.",
+    "operation": "The technical release and private dashboard are live. The eight-group production verifier passed on the current application implementation; the current checkout also passed Firestore emulator 8/8, API/CLI 77/77, unit 65/65, browser 18/18, lint, build, and hosted macOS CLI.",
     "next_checkpoint": "At final handoff, revisit the explicitly deferred human and Google provider checks. No immediate user action is needed."
   },
   "milestones": [
@@ -29,7 +29,7 @@
     {
       "name": "Backend and production verification",
       "state": "complete",
-      "detail": "The eight-group production verifier passed on the current implementation and reported synthetic cleanup. API/CLI 77/77, unit 65/65, browser 18/18, lint, build, boundary, native runtime, and hosted macOS CLI pass. Firestore emulator 8/8 is retained from the prior run."
+      "detail": "The eight-group production verifier passed on the current implementation and reported synthetic cleanup. The current checkout passed Firestore emulator 8/8, API/CLI 77/77, unit 65/65, browser 18/18, lint, build, boundary, native runtime, and hosted macOS CLI."
     },
     {
       "name": "Desktop/CLI and completed device checks",
@@ -138,10 +138,14 @@
     {
       "timestamp": "2026-09-29T18:10:51Z",
       "event": "The current application implementation passed all eight live backend verifier groups on READY canonical deployment dpl_HFiEBsBNzkBF8AsZpVMBvueTpV7d. The verifier reported synthetic records and identity removed and temporary PATs revoked; all six canonical routes returned HTTP 200."
+    },
+    {
+      "timestamp": "2026-09-29T18:18:37Z",
+      "event": "Ran npm run test:emulator on checkout e644c23: all 8 Firestore emulator tests passed, including direct-client write denial, Admin SDK isolation, concurrent same-user create/rename races, and cross-user name isolation. Human and Google provider gates remain deferred."
     }
   ],
   "walk_away": {
-    "last_verified_good_state": "Application implementation 2c1cdc3 was served by READY deployment dpl_HFiEBsBNzkBF8AsZpVMBvueTpV7d on the canonical alias. All six routes returned HTTP 200 and the eight-group live backend verifier passed. Local API/CLI 77/77, unit 65/65, browser 18/18, lint/build, and hosted macOS CLI passed.",
+    "last_verified_good_state": "Application implementation 2c1cdc3 was served by READY deployment dpl_HFiEBsBNzkBF8AsZpVMBvueTpV7d on the canonical alias. All six routes returned HTTP 200 and the eight-group live backend verifier passed. Current checkout e644c23 passed Firestore emulator 8/8; API/CLI 77/77, unit 65/65, browser 18/18, lint/build, and hosted macOS CLI also passed.",
     "unfinished_operation": "Google provider and remaining device/accessibility acceptance are deferred by user instruction.",
     "exact_next_safe_step": "At final handoff, review the deferred checks and decide whether to perform the Google provider actions.",
     "touched_files_or_services": "Application source commits d20a785, d5c2e72, and 2c1cdc3 are on origin/main. The dashboard folder is tracked; Tailscale Serve points to its dedicated loopback static server. No private host details or secrets are in the repository snapshot.",
@@ -152,7 +156,7 @@
     "mode": "Portable repository snapshot and private Tailscale Serve",
     "native_artifact": "Unavailable in this host.",
     "tailscale": "Host-side private HTTPS endpoint verified with matching dashboard identity and timestamp; the tailnet URL is shared in chat, not committed.",
-    "last_verified": "2026-09-29T18:10:51Z; READY canonical Vercel alias, six live routes, eight-group live backend verifier, current source checks, and hosted macOS CLI.",
+    "last_verified": "2026-09-29T18:18:37Z; READY canonical Vercel alias, six live routes, eight-group live backend verifier, current-checkout Firestore emulator 8/8, other source checks, and hosted macOS CLI.",
     "repository_persistence": "Dashboard source and state are tracked on main; this update is committed as a checkpoint.",
     "limitation": "Tailnet access depends on this host staying awake and connected. A second-device dashboard visit has not been independently tested."
   }
