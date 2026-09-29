@@ -53,7 +53,7 @@ function parseArgs(argv: string[]) {
     if (arg === '--') continue;
     if (arg.startsWith('--')) {
       const key = arg.slice(2);
-      if (['json', 'permanent', 'yes', 'dry-run'].includes(key)) flags.set(key, true);
+      if (['json', 'permanent', 'yes', 'dry-run', 'help', 'version'].includes(key)) flags.set(key, true);
       else {
         const value = argv[i + 1];
         if (!value || value.startsWith('--')) fail(`Missing value for --${key}`);
@@ -62,7 +62,7 @@ function parseArgs(argv: string[]) {
       }
     } else positionals.push(arg);
   }
-  return { command: positionals[0] || 'help', positionals: positionals.slice(1), flags };
+  return { command: positionals[0] || (flags.has('version') ? 'version' : 'help'), positionals: positionals.slice(1), flags };
 }
 
 function loadConfig(flags: Map<string, string | boolean>): Config {
@@ -165,7 +165,7 @@ async function main() {
     process.stdout.write(help());
     return;
   }
-  if (command === 'version' || command === '--version') {
+  if (command === 'version' || flags.has('version')) {
     process.stdout.write(`${VERSION}\n`);
     return;
   }

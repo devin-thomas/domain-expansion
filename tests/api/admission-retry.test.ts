@@ -169,6 +169,7 @@ describe('bounded AI retry behavior', () => {
       expect(Date.now() - started).toBeGreaterThanOrEqual(100);
       expect(result.status).toBe(200);
       expect(harness.aiCalls.map((request) => request.model)).toEqual(['gemini-3.5-flash-lite', 'gemini-3.8-flash']);
+      expect(result.body.model).toBe('gemini-3.8-flash');
     } finally {
       await harness.close();
     }

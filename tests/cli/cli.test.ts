@@ -21,6 +21,22 @@ function run(args: string[], env: NodeJS.ProcessEnv, input?: string) {
 }
 
 describe('cli', () => {
+  it('supports help and version flags without credentials', async () => {
+    const env = { DOMAIN_EXPANSION_API_URL: '', DOMAIN_EXPANSION_TOKEN: '', DOMAIN_EXPANSION_CONFIG: path.join(os.tmpdir(), `missing-cli-config-${process.pid}.json`) };
+    for (const args of [['--help'], ['list', '--help']]) {
+      const result = await run(args, env);
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('Usage:');
+      expect(result.stderr).toBe('');
+    }
+    for (const args of [['--version'], ['list', '--version']]) {
+      const result = await run(args, env);
+      expect(result.code).toBe(0);
+      expect(result.stdout.trim()).toBe('1.0.0');
+      expect(result.stderr).toBe('');
+    }
+  });
+
   it('uses the API for list, add, archive, and guarded delete', async () => {
     const harness = await startHarness();
     const browser = await session(harness.base, { uid: 'cli-user', email: 'cli@example.com' });

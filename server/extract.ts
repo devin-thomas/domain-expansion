@@ -36,7 +36,8 @@ export async function extractDrafts(store: DocStore, config: Config, ai: AiPort,
   const settings = (await store.get<{ defaultCurrency: string }>(`users/${actor.uid}/settings/app`)) ?? DEFAULT_SETTINGS;
   const started = Date.now();
   const user = `Today is ${today} in ${timezone}. Account currency default: ${settings.defaultCurrency}. Text:\n${text}`;
-  let result = await ai.generate({ model: config.geminiPrimaryModel, apiKey, system: SYSTEM, user, timeoutMs: AI_ATTEMPT_TIMEOUT_MS });
+  let model = config.geminiPrimaryModel;
+  let result = await ai.generate({ model, apiKey, system: SYSTEM, user, timeoutMs: AI_ATTEMPT_TIMEOUT_MS });
   if (isTransient(result) && Date.now() - started < AI_TOTAL_TIMEOUT_MS) {
     const retryAfter = result.retryAfterMs ?? 0;
     const remainingBeforeRetry = AI_TOTAL_TIMEOUT_MS - (Date.now() - started);
@@ -49,8 +50,9 @@ export async function extractDrafts(store: DocStore, config: Config, ai: AiPort,
     if (retryAfter > 0) await new Promise((resolve) => setTimeout(resolve, retryAfter));
     const remaining = AI_TOTAL_TIMEOUT_MS - (Date.now() - started);
     if (remaining > 1000 && config.geminiFallbackModel !== config.geminiPrimaryModel) {
+      model = config.geminiFallbackModel;
       result = await ai.generate({
-        model: config.geminiFallbackModel,
+        model,
         apiKey,
         system: SYSTEM,
         user,
@@ -78,7 +80,7 @@ export async function extractDrafts(store: DocStore, config: Config, ai: AiPort,
     status: 200,
     body: {
       drafts: validated.data.drafts.map((draft) => materializeDraft(draft, today, settings.defaultCurrency)),
-      model: config.geminiPrimaryModel,
+      model,
     },
   };
 }
