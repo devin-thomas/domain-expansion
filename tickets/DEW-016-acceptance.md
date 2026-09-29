@@ -43,15 +43,12 @@ Passed:
 
 Those checks cover isolation, scopes, revocation, stale revisions, idempotency, batch/import atomicity, owner-key separation, and the five-field form. Provider ports were fakes except the Firestore emulator.
 
-Not run, and not claimed:
+Still pending, and not claimed:
 
-- Physical iPhone or Android.
-- Live Resend inbox delivery.
-- Live Firebase email-link completion.
-- Production application integration with Gemini (provider-level structured-generation calls passed; see [DEW-012](DEW-012-ai-extraction.md)).
 - Live Google Calendar, Tasks, Sheets, or Drive.
-- Canonical-host HTTPS and application-route smoke on a production deployment.
 
 Those gaps are the DEW-017 blockers. They are not recorded as success.
 
-On 2026-09-28, the final local run passed API/CLI (22 tests), unit (18 tests), Firestore emulator (5 tests), frontend browser (10/10), lint, and production build. The focused purchase-field unit/API suite passed 10/10. No physical-device or real-inbox acceptance is claimed; those remain release checks under DEW-017.
+On 2026-09-28, the run passed API (25), unit (32), Firestore emulator (6), frontend browser (10/10), lint, and production build; this is retained as historical evidence. On 2026-09-29, latest source checks passed API/CLI (32/32), unit (32), emulator (6), browser (10/10), lint, and build including the native compiled-runtime check. Focused purchase-field checks passed 10/10 and focused Google integration checks passed 12/12. The production verifier passed all eight CLI/API groups, including update/archive/unarchive, scope enforcement, and token revocation. Canonical `/`, `/showcase`, `/auth/finish`, `/privacy`, `/api/health`, and `/api/openapi.json` returned HTTP 200 through Cloudflare. Standard `If-Match` PATCH and integration revision updates passed; stale revisions returned 412 and missing revisions returned 428, and persisted data matched the final revision before cleanup. The owner received the Resend access-request notification and Firebase sign-in email in Gmail spam, completed the email link on the canonical host, and reached the admin dashboard; production identity configuration matched the verified owner account. Chrome AI Quick Add passed explicit review-before-save and Add; optional purchase email and payment-method text persisted after edit/reopen. A synthetic production `POST /api/ai/extract` returned HTTP 200 without portfolio writes. On 2026-09-29, the user reported successful phone/second-device sign-in, capture, and edit on the canonical site; phone model and browser were unspecified. A Vercel CLI-triggered retry-provider GET returned 200 at 14:22:59 UTC and advanced queues at 14:23:03 UTC, but this does not identify a timer-triggered call. Retry-audit source tests pass. A provider-triggered production run wrote a successful audit record (2 scanned, 0 retried, 1,173 ms); an anonymous forged request returned 401 without writing an audit record. The run was provider-triggered and does not confirm clock-scheduled execution. Google consent/provider actions remain pending under DEW-017.
+
+On 2026-09-29, automatic scheduling was verified using a temporary `45 14 * * *` window. No manual cron trigger was sent during that window. Vercel recorded a production GET 200 on `dpl_D41ZxXgHmNCzkjHAHqfWhLhEbhmv`; the durable provider record started at 14:49:58.211 UTC and completed at 14:49:59.414 UTC (1,203 ms, 2 scanned, 0 retried, succeeded). The normal daily `0 12 * * *` schedule was then restored and verified on Vercel. The scheduler acceptance gate is closed.
