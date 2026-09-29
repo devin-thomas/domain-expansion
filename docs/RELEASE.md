@@ -1,60 +1,54 @@
 # Release and rollback
 
-Checked 2026-09-27 in this repository. No production cutover was performed.
+Status checked 2026-09-28. The canonical repository and several provider configurations are verified, but the application has not been deployed and smoke-tested at `domains.devthomas.site`; DEW-017 remains Blocked.
 
-## What this build is
+## Current implementation and evidence
 
-Domain Expansion is the React/TypeScript/Vite application in this repository. Firestore is the portfolio store when `DATA_STORE=firestore`. The browser never talks to Firestore directly: `firestore.rules` denies every client read and write, and the Admin SDK handlers still reject another user's records. Google Drive app data is not a database and there is no legacy migration.
+The canonical application is the React/TypeScript/Vite project in this repository. Firestore is the account portfolio store when `DATA_STORE=firestore`; browser clients have no direct Firestore access, and server handlers must enforce identity, membership, ownership, and token scope. Google Drive app data is not a database and no legacy migration is in scope.
 
-## Verified here
+The final local run passed API/CLI (22 tests), unit (18 tests), Firestore emulator (5 tests), frontend browser (10/10), lint, and production build. The focused payment-field unit/API run passed 10/10. These local checks do not prove the production application's behavior on the public host.
 
-- `npx tsc --noEmit`
-- `npm run build` (Vite client, `dist/server.cjs`, client-boundary scan)
-- `npx vitest run` for unit, API, and CLI tests
-- `npm run test:emulator` against the Firestore emulator, project `demo-domain-expansion`
-- `npx playwright test` in Chrome at 390×844 and 1440×900, plus a CSS zoom of 2
+## Verified provider and repository setup
 
-These checks use the memory store, a fake mail port, a fake Gemini port, and the local emulator. They do not prove inbox delivery, live Gemini, live Google Calendar/Tasks/Sheets/Drive, or a public HTTPS host.
+- Repository: `https://github.com/devin-thomas/domain-expansion` on `main` is the active web source. The public Flutter history remains in the archived `https://github.com/devin-thomas/domain-expansion-flutter`; see [REPOSITORY-CONSOLIDATION.md](REPOSITORY-CONSOLIDATION.md).
+- DNS: `domains.devthomas.site` has a DNS-only CNAME targeting `9192af12dd517814.vercel-dns-017.com`. The Vercel production deployment, HTTPS response, and application route probes remain pending.
+- Firestore: Firebase project `gen-lang-client-0134385093`, default database `(default)` in `nam5`, free tier; security rules and indexes are deployed. The dedicated server service account has `roles/datastore.user` and `roles/firebaseauth.admin`. Confirm the deployed application uses this project; never put service-account keys in this document.
+- Firebase Auth: the canonical host is in the authorized domains and email-link sign-in is enabled (`emailEnabled=true`, `passwordRequired=false`). The existing owner identity was confirmed by the user as email-verified. Do not put owner email or UID values in public documentation. Real canonical-host link delivery/completion is still pending.
+- Vercel: twenty production environment variables are configured in the protected project environment. Their names and values are not reproduced here. A deployment using the current source, deployment id/commit, and production route smoke tests remain pending.
+- Gemini: both configured model identifiers accepted live structured-generation requests without truncation. This proves the provider credential/model path, not deployed application integration.
+- Resend: the `devthomas.site` sending domain reports Verified. Credential approval was granted and creation of the sending API key is underway; no production notification key/delivery has been validated. Sender/recipient configuration and real inbox receipt remain pending.
+- Retry worker: production `CRON_SECRET` and `NOTIFICATION_RETRY_SECRET` are configured to the same protected value. Vercel Cron calls `GET /api/internal/notifications/retry` daily at 12:00 UTC with `Authorization: Bearer CRON_SECRET`. Normal access/sign-in requests also trigger an immediate `waitUntil` queue drain. The durable retry worker uses bounded paged retries (up to 8 claims, 64 queue documents, and 40 seconds per run) with cursor leases and fairness; tests cover the queue behavior. A successful production schedule invocation and real delivery remain pending.
+- Billing: Firebase email-link quota and any billing implications have not yet been recorded as reviewed. Do not make a paid plan change without separate explicit authorization.
 
-## Follow-up QA on the implementation branch
+## Production gate
 
-The local clone passed `npm run lint`, `npm run build`, `npm test` (23 passed; emulator tests skipped), and `npm run test:browser` (5 passed). New API regressions cover fail-closed deployed configuration, shared API request limits, preserving Calendar metadata when Tasks is connected, and exact import preview changes. Browser regressions cover archive restore, token revocation, and import commit refresh. The local Firestore emulator did not finish starting on this machine, which currently has Java 17; this follow-up does not replace the earlier emulator evidence above.
+Record a deployment id and source commit, then verify all of the following against the deployed canonical host:
 
-The XLSX import parser now uses SheetJS `0.20.3` from the vendor CDN, locked with an integrity hash in `package-lock.json`; the stale Bun lockfile was removed and Vercel uses `npm ci`. `npm audit --omit=dev --audit-level=high` reports no high or critical production advisories. Eight moderate production advisories remain in the Firebase Admin dependency tree. The full development audit still reports one high and two critical findings in `firebase-tools`/`vitest`; review those before relying on those tools in a shared CI environment.
+- `https://domains.devthomas.site/`, `/showcase`, `/auth/finish`, and `/api/health` load or return their expected responses; API routes are not rewritten to the SPA.
+- Verify the deployed Firebase email-link continuation and complete a real approved sign-in on the canonical origin; do not put its action code in logs or evidence.
+- After the approved Resend key is created and configured, verify a real access request appears in the protected admin queue and configured inbox; Approve sends Firebase sign-in mail, and delivery/failure/retry states are visible.
+- Verify Vercel Cron invokes the retry endpoint on schedule with the protected bearer secret, and that unauthorized calls fail without disclosing queue data.
+- Verify the deployed `OWNER_UID` maps to the user's confirmed email-verified Firebase identity and that no other user inherits the server Gemini credential. Keep owner identity values private.
+- Production test-auth flags are off. Preview and production data/configuration are isolated.
+- Firebase email-link quota and billing are checked explicitly. No paid plan change or auth-provider switch occurs without separate explicit authorization.
+- Physical-device checks, if performed, identify the actual iPhone/Android browser and result. Browser emulation is not physical-device evidence.
 
-## Blocked before calling the host live
+## Environment variable names
 
-DEW-017 stays blocked until someone with authority confirms all of the following:
+Server configuration names include `APP_ENV`, `APP_ORIGIN`, `ALLOWED_ORIGINS`, `AUTH_CONTINUE_URL`, `DATA_STORE`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_WEB_API_KEY`, `OWNER_UID`, `OWNER_EMAIL`, `ADMIN_NOTIFICATION_EMAIL`, `RESEND_API_KEY`, `RESEND_FROM`, `CRON_SECRET`, `NOTIFICATION_RETRY_SECRET`, `BYOK_KEYRING`, `BYOK_KEY_ID`, `OWNER_GEMINI_API_KEY`, and `CURSOR_SECRET`. Browser configuration may include the public Firebase web config and `VITE_GOOGLE_OAUTH_CLIENT_ID` only if integrations are enabled. Never commit values, tokens, service-account material, or email action codes.
 
-- `domains.devthomas.site` resolves to the intended Vercel project and serves HTTPS.
-- `/auth/finish`, `/showcase`, and `/api/health` respond on that host, and `/api/*` is not rewritten to the SPA.
-- Firebase authorized domains and the email-link continue URL include the canonical origin.
-- The desired sender, `Domain Expansion <auth@devthomas.site>`, is actually verified in Firebase. Resend remains the admin-notification provider. SPF/DKIM changes must not break existing mail for the domain.
-- Firebase email-link quota and any billing choice are reviewed. Do not upgrade a plan or switch auth providers as a side effect of deploy.
-- A real access request arrives in the configured admin inbox, Approve starts a Firebase sign-in email, and that link completes on a second device.
-- `OWNER_UID` is the exact owner who may use `OWNER_GEMINI_API_KEY`. No other UID inherits it.
-- Preview and production environments do not share the same Firestore data or test-auth flags. `DOMAIN_EXPANSION_TEST_AUTH` and `VITE_TEST_AUTH` stay off in production.
+Key rotation: install the new 32-byte key in `BYOK_KEYRING`, point `BYOK_KEY_ID` at it, retain the previous key, and run `reencryptCredentials` for the previous key id. Remove the old key only after confirming existing ciphertext opens with the new key. There is no plaintext fallback.
 
-Names only. Do not commit the values.
-
-## Operator configuration
-
-Server: `APP_ENV`, `APP_ORIGIN`, `ALLOWED_ORIGINS`, `AUTH_CONTINUE_URL`, `DATA_STORE`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_WEB_API_KEY`, `OWNER_UID`, `OWNER_EMAIL`, `ADMIN_NOTIFICATION_EMAIL`, `RESEND_API_KEY`, `RESEND_FROM`, `NOTIFICATION_RETRY_SECRET`, `BYOK_KEYRING`, `BYOK_KEY_ID`, `OWNER_GEMINI_API_KEY`, `CURSOR_SECRET`.
-
-Browser: the public Firebase web config and, only if integrations are enabled, `VITE_GOOGLE_OAUTH_CLIENT_ID`. That client is for on-demand Calendar, Tasks, Sheets, or `drive.file` backup. It is not the Domain Expansion sign-in.
-
-Key rotation: install the new 32-byte key in `BYOK_KEYRING`, point `BYOK_KEY_ID` at it, keep the previous key, and run `reencryptCredentials` for the previous key id. The Firestore store lists `users/{uid}/privateCredentials/gemini` through a collection-group read. Drop the old key only after ciphertext opens with the new key. There is no plaintext fallback.
-
-Notification retry: an approved admin can retry one notification, or a worker can `POST /api/internal/notifications/retry` with `NOTIFICATION_RETRY_SECRET`. Retries are bounded. Resend's idempotency window is not a promise of exactly-once delivery outside that window.
+Notification retry: the scheduled worker uses `GET /api/internal/notifications/retry` with `Authorization: Bearer CRON_SECRET`; `CRON_SECRET` and `NOTIFICATION_RETRY_SECRET` must have the same protected value. Normal admission events request an immediate queue drain. Retries are bounded; provider idempotency does not guarantee exactly-once delivery indefinitely.
 
 ## Rollback
 
-1. Point the host back at the previous Vercel deployment. Do not repoint the app at Google Drive app data.
-2. Leave Firestore documents in place. A rollback of the server does not delete portfolios.
-3. If a bad deploy wrote new schema fields, stop writes, export the affected account through `/api/v1/export`, and repair with the import preview/commit flow. Do not execute SQL exports.
-4. Revoke any personal access token that may have leaked. Removing a Gemini key is `DELETE /api/credentials/gemini` for that signed-in user.
-5. Keep `APP_ENV=production` from enabling test sessions. If test auth was ever on in production, treat issued test tokens as compromised and rotate `TEST_AUTH_SECRET`.
+1. Point the Vercel production alias back to the previously verified deployment and record both deployment ids.
+2. Leave Firestore documents in place. A server rollback does not delete portfolios or undo valid writes.
+3. If a deployment wrote incompatible records, pause affected writes, export through the authenticated backup flow, and repair through preview/commit. Never execute SQL export text.
+4. Revoke exposed personal access tokens. Remove a user's Gemini credential through the authenticated credential endpoint.
+5. Keep production test-auth disabled. If test auth was enabled in production, disable it and treat issued test sessions as compromised; rotate `TEST_AUTH_SECRET` where configured.
 
-## Not claimed
+## Not yet claimed
 
-No physical iPhone or Android pass was run. Browser emulation is Chrome via Playwright. No paid Firebase or Resend change was made.
+There is no recorded production deployment id, canonical-host application smoke result, Firebase sign-in completion, Resend notification receipt, live Google API acceptance, or physical-device pass. Provider-level Gemini structured-generation acceptance is recorded above, but deployed application acceptance is still pending.

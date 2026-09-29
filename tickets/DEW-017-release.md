@@ -30,16 +30,16 @@ Contract: SPEC sections 12–13; R14, R16.
 
 ## Verification
 
-Blocked on 2026-09-27. No deployment identifier, host probe, inbox receipt, or quota check exists for this change.
+Blocked on 2026-09-28. The active web repository is `devin-thomas/domain-expansion` on `main`; the public Flutter repository is archived as `devin-thomas/domain-expansion-flutter` with its history retained. DNS points to Vercel; Firestore `(default)` in `gen-lang-client-0134385093` is provisioned in `nam5` on the free tier with rules and indexes deployed and a dedicated service account granted `roles/datastore.user` and `roles/firebaseauth.admin`. Firebase Auth includes the canonical authorized domain with email-link sign-in enabled; the existing owner identity is confirmed email-verified. Resend reports `devthomas.site` verified and key creation is underway after credential approval. Twenty production environment variables are configured in Vercel, including matching protected cron/retry secrets; Vercel Cron is configured to call the bounded retry endpoint daily at 12:00 UTC. Both configured Gemini models accepted structured-generation calls. These facts do not establish a production app deployment or live user flow. No deployment identifier, canonical-host route probe, real email receipt/completion, or quota review has been recorded.
 
 Missing inputs:
 
-- Authority to set DNS so `domains.devthomas.site` reaches the intended Vercel project.
-- Firebase authorized-domain and sender verification for `Domain Expansion <auth@devthomas.site>`.
-- A real admin recipient and Resend credentials, plus permission to send the admission mail.
-- Firebase email-link quota review and explicit billing consent before any paid change.
-- `OWNER_UID` and the server secrets named in `docs/RELEASE.md`, supplied outside git.
+- Deploy the current `main` source to the intended production Vercel project, record the deployment id/commit, verify DNS/HTTPS, and probe canonical application/API routes.
+- Complete a real Firebase email-link sign-in on the canonical host, including second-device completion, and verify the configured sender behavior.
+- Finish creating/configuring the approved Resend sending credential and private sender/recipient values; verify real admin notification delivery and failure/retry handling.
+- Review Firebase email-link quota and billing implications explicitly before any paid change.
+- Verify the deployed `OWNER_UID` matches the user's confirmed email-verified identity and that production secrets/configuration are loaded correctly. Keep all private values out of this document.
 - A second device to finish a real email link.
 - Physical phone checks, which DEW-016 also leaves unclaimed.
 
-Automated evidence for DEW-001 through DEW-016 is in those tickets. Rollback steps are in `docs/RELEASE.md`. This ticket does not change billing or DNS.
+Automated baseline evidence and the focused payment-field result are recorded in the other tickets. The final local API/CLI (22), unit (18), emulator (5), browser (10/10), lint, and build checks passed; provider configuration or model-level acceptance is not production application acceptance. Rollback steps are in `docs/RELEASE.md`.

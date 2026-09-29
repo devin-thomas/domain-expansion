@@ -29,4 +29,4 @@ Contract: SPEC section 8; R05, R06.
 
 ## Verification
 
-2026-09-27. `tests/api/matrix.test.ts` uses a fake provider. A 429 from `gemini-3.5-flash-lite` falls back once to `gemini-3.8-flash` with the same caller key. The year is returned as a labeled proposal. The domain list stays empty after extract. A member never receives the owner key. No live Gemini request was made, so this is not real primary-model access.
+2026-09-27 baseline: `tests/api/matrix.test.ts` uses a fake provider to cover fallback, proposal labeling, no-write behavior, and owner-key isolation. On 2026-09-28, both configured Gemini models accepted live structured-generation requests without truncation. This confirms provider/model access only; production application integration remains pending DEW-017.

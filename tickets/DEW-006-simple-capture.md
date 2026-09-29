@@ -12,6 +12,8 @@ Connect the existing UI to authenticated persistence. Build the five-group Quick
 
 Contract: SPEC sections 3.1–3.3; R03, R13.
 
+Purchase email and payment-method description are intentionally excluded from Quick Add; they belong on the advanced record surface and must not add capture friction.
+
 ## Acceptance Criteria
 
 - Fresh Quick Add shows only Domain, Registrar, Renewal date, Renewal cost + currency, and Renewal intention as ordinary input groups.
@@ -29,4 +31,4 @@ Contract: SPEC sections 3.1–3.3; R03, R13.
 
 ## Verification
 
-2026-09-27. `npx playwright test` passed in Chrome. The first test uses a 390×844 viewport, saves `phone.example` from the five Quick Add fields with the advanced panel closed, then checks the same record at 1440×900 and `/showcase`. A second test reaches the domain field and the registrar field with Tab. Account-switch clearing is implemented in the client (`clearPrivate` before a new session). No physical device was used.
+2026-09-28. Final browser suite passed 10/10; focused purchase-field unit/API checks passed 10/10. Final lint/build and API/CLI, unit, and emulator suites passed (22, 18, and 5 tests respectively). Quick Add remains the original five groups; optional purchase fields stay in advanced details. No physical device was used.

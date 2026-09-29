@@ -4,13 +4,13 @@ Discovery closed after five rounds and twenty resolved product questions. Histor
 
 ## ADR-001 - Continue from the AI Studio web repository
 
-**Status:** Accepted
+**Status:** Superseded by ADR-023.
 
-**Decision:** `devin-thomas/domain-expansion-ai-studio` is the canonical implementation base. The original Flutter repository remains a reference/donor implementation.
+**Decision:** At discovery time, `devin-thomas/domain-expansion-ai-studio` was selected as the canonical implementation base. The original Flutter repository remained a reference/donor implementation.
 
 **Rationale:** The AI Studio version is the actively evolved responsive web product, already deployed on Vercel and already shaped by Surface Sweep/showcase work. The Flutter version contains stronger domain semantics but is not the desired interaction or delivery model.
 
-**Consequences:** Forward implementation happens in the AI Studio repository. Valuable Flutter semantics are migrated selectively into the web product without merging the two codebases.
+**Consequences:** This historical repository choice is superseded by ADR-023; the web implementation continues in the renamed `devin-thomas/domain-expansion` repository.
 
 ## ADR-002 - Use Firestore as canonical persistence
 
@@ -211,3 +211,23 @@ Discovery closed after five rounds and twenty resolved product questions. Histor
 **Rationale:** Routine automation should retain useful history and make mistakes recoverable without preventing deliberate removal.
 
 **Consequences:** No generic write, import replacement, reset action, or AI path may secretly act as collection deletion. Cancellation changes nothing. Tests must prove that read/write tokens cannot permanently delete by any exposed route.
+
+## ADR-022 - Store optional purchase contact and payment description per domain
+
+**Status:** Accepted
+
+**Decision:** A domain record may include `purchaseEmail`, an optional trimmed email string checked against the application's email syntax rule, and `paymentMethod`, an optional plain-text user description bounded to 2,000 characters. Both fields may be cleared and are ordinary private per-user domain data. They are available in advanced record details, the authenticated API, and supported user-controlled backup/export formats. Quick Add remains unchanged.
+
+**Rationale:** The owner wants to record which email and payment method were used for a domain purchase. The method is descriptive user-entered text; the product does not parse or tokenize it.
+
+**Consequences:** The fields follow existing record ownership and server authorization. The email is not inbox-verified. The description is visible to privileged server infrastructure and is not protected by a zero-knowledge claim. Neither field changes cost calculations, registrar settings, nor application billing/subscriptions. Older records without either field remain valid and normalize to null.
+
+## ADR-023 - Keep one active web repository and archive Flutter history
+
+**Status:** Accepted
+
+**Decision:** `devin-thomas/domain-expansion` on `main` is the sole active Domain Expansion repository. Preserve the original Flutter repository as the public archived `devin-thomas/domain-expansion-flutter`; do not merge its implementation into the web application or delete its history.
+
+**Rationale:** The AI Studio-derived web product is the intended application, while the original Flutter repository contains useful historical domain semantics and should remain recoverable.
+
+**Consequences:** The Flutter archive retains its original branches and commit history. A verified local Git bundle backup is also kept outside the public source tree. The old repository is an archived reference, not an active competing implementation. The separate Takaya project remains outside this repository.

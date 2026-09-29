@@ -2,17 +2,17 @@
 
 ## Status and authority
 
-Discovery is complete: **5 rounds, 20 product questions resolved**. The final user instruction approves separate API delete permission, strict per-user storage, and archive-first operation, and explicitly removes legacy Google Drive migration from this build. The requested endpoint is the documentation/build pack, not implementation or infrastructure changes.
+Discovery is complete: **5 rounds, 20 product questions resolved**. The React/TypeScript/Vite application is the canonical web implementation. The user approved separate API delete permission, strict per-user storage, archive-first operation, and optional purchase-payment metadata. Legacy Google Drive migration remains excluded.
 
-Read [SPEC.md](SPEC.md) for the implementation contract and [tickets/README.md](tickets/README.md) for the ordered work. As of 2026-09-27, DEW-001 through DEW-016 are Complete on the automated evidence in those tickets. DEW-017 is Blocked pending DNS, sender, inbox, billing, and physical-device checks. [ADR.md](ADR.md) preserves decision history, including the superseded migration decision. [Ideas.md](Ideas.md) is non-binding deferred work.
+Read [SPEC.md](SPEC.md) for the implementation contract and [tickets/README.md](tickets/README.md) for the ordered work. The purchase-field tests and final local API/CLI, unit, emulator, lint/build, and browser checks passed on 2026-09-28; DEW-006, DEW-007, and DEW-016 are Complete. DEW-017 remains Blocked on production deployment and live application acceptance. Provider setup and repository consolidation are recorded in [docs/RELEASE.md](docs/RELEASE.md) and [docs/REPOSITORY-CONSOLIDATION.md](docs/REPOSITORY-CONSOLIDATION.md). [ADR.md](ADR.md) preserves decision history, including the superseded migration decision. [Ideas.md](Ideas.md) is non-binding deferred work.
 
 Authority: current explicit user decision → Context → ADR rationale → SPEC → ticket acceptance criteria → implementation. Do not mistake the existing prototype for completed target behavior.
 
 ## Product and implementation base
 
-Domain Expansion is a fast, human-first website domain tracker, with richer data available when a task actually needs it. Continue in `devin-thomas/domain-expansion-ai-studio`, preserving its React/TypeScript/Vite interface, responsive work, and product showcase. The original Flutter `devin-thomas/domain-expansion` is a reference for domain semantics, not a second implementation to maintain or merge.
+Domain Expansion is a fast, human-first website domain tracker, with richer data available when a task actually needs it. The canonical implementation is the React/TypeScript/Vite application in `devin-thomas/domain-expansion`. The former public Flutter repository is preserved as the archived `devin-thomas/domain-expansion-flutter`; its full history remains there and has a verified local bundle backup. The separate local Rust/React Takaya project remains preserved outside this web repository and is not merged into the canonical application.
 
-Production identity: `domains.devthomas.site`. Authentication sender target: `Domain Expansion <auth@devthomas.site>`, subject to verifying Firebase's template and DNS configuration. This documentation does not assert that either has been provisioned.
+Production identity: `domains.devthomas.site`. Its DNS CNAME is configured and the host is added to Firebase Auth's authorized domains, but the Vercel production deployment and canonical-host application routes are not yet verified. Firebase email-link sign-in is enabled. The intended sender remains `Domain Expansion <auth@devthomas.site>`; delivery is pending and Resend credential approval is granted while key creation/configuration is underway. See [docs/RELEASE.md](docs/RELEASE.md).
 
 ### Governing principle: a small number of impactful items
 
@@ -41,6 +41,8 @@ Dashboard priority: next expected payment, next-12-month expected cost separated
 | Billing / expiration | Separate date-only facts. Effective billing falls back to expiration and vice versa. |
 | Quick Add renewal date | Simple input mapped to expiration date, with billing left unset; fallback supplies the initial payment date. |
 | Registration / renewal cost | Separate optional integer minor-unit amounts in the record's currency. Unknown is not zero. |
+| Purchase email | Optional trimmed email address used for a domain purchase; syntactically validated, nullable, and not inbox-verified. |
+| Payment method | Optional user-authored plain-text description, nullable, up to 2,000 characters. It is not parsed or tokenized. |
 | Archive | Reversible exclusion from ordinary active views; preserves the record. |
 | Permanent delete | Explicit irreversible record removal, separately authorized. |
 | AI draft | Untrusted proposed data, not a saved domain. |
@@ -49,7 +51,7 @@ Dashboard priority: next expected payment, next-12-month expected cost separated
 | Owner exception | One explicitly configured owner UID may use the server's Gemini credential; it is not inherited by all admins. |
 | Personal access token | Scoped, revocable automation credential, not a Firebase browser session or Gemini key. |
 
-Stored advanced data includes registrar, DNS provider, ownership, lifecycle, renewal intention, auto-renew, registration/billing/expiration dates, registration/renewal costs, currency, notes, archive state, reminder configuration, and created/updated metadata. Effective dates, urgency, spending totals, and upcoming status are derived. External Google event/task references are integration metadata, not authority over the domain record.
+Stored advanced data includes registrar, DNS provider, ownership, lifecycle, renewal intention, auto-renew, registration/billing/expiration dates, registration/renewal costs, purchase email, payment-method description, currency, notes, archive state, reminder configuration, and created/updated metadata. Effective dates, urgency, spending totals, and upcoming status are derived. External Google event/task references are integration metadata, not authority over the domain record. Purchase fields are ordinary per-user domain data, not application credentials; the user-controlled backup/export formats include them.
 
 ## Accounts, approval, and privacy
 
@@ -82,7 +84,7 @@ accessRequests/{requestId}
 server-only approval, notification, rate-limit, and idempotency records
 ```
 
-Client Firestore access is denied in the initial API-first implementation. Firebase Admin bypasses client security rules, so the server must enforce ownership, membership, and scopes independently. Secrets and access-control records are not ordinary user-readable documents.
+Client Firestore access is denied in the API-first implementation. Firebase Admin bypasses client security rules, so the server must enforce ownership, membership, and scopes independently. Secrets and access-control records are not ordinary user-readable documents. Payment-method descriptions are stored as ordinary private domain text and are visible to privileged server infrastructure; the product does not claim zero-knowledge storage.
 
 ### No legacy Drive migration
 

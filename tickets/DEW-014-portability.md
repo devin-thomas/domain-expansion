@@ -15,6 +15,7 @@ Contract: SPEC section 11.1; R04, R11, R15.
 ## Acceptance Criteria
 
 - A rich-record fixture round-trips every supported public field, reminder configuration, date-only value, currency amount, archive state, zero, false, null, and note.
+- Optional `purchaseEmail` and `paymentMethod` values survive canonical JSON/YAML/CSV/XLSX/SQL export and supported import paths; absent older fields normalize to null.
 - Full backup metadata declares schema/version. Unsupported versions fail clearly instead of silently omitting fields.
 - XLSX separates domain/reminder/settings metadata; CSV/SQL domain exports are not labeled complete backups. Uploaded SQL is not executed.
 - Credentials, token verifiers, membership authority, other users' records, and server encryption material are never exported or importable.
@@ -30,4 +31,4 @@ Contract: SPEC section 11.1; R04, R11, R15.
 
 ## Verification
 
-2026-09-27. JSON, YAML, and XLSX round-trip the rich fixture with `fullFidelity: true`. SQL text throws and is not executed. A declared zip expansion over 8 MiB is rejected. Import preview does not add a domain; commit adds the new name and keeps the existing one. Export JSON from the API test does not match token or Gemini material. CSV is a lossy export. Schema version 1 is rejected.
+2026-09-27 baseline: JSON, YAML, and XLSX round-trip the rich fixture; SQL text is never executed; CSV is labeled lossy. The 2026-09-28 focused payment-field tests passed 10/10, covering format round trips and compatibility with older records. Final integrated portability regression remains pending.

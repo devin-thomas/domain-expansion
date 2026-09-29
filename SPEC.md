@@ -1,6 +1,6 @@
 # Domain Expansion — Web Implementation Specification
 
-**Status:** Discovery complete; implementation contract. Implementation and live-service acceptance are not yet complete.
+**Status:** Discovery complete; implementation contract. The core implementation exists; final integrated verification and production acceptance remain incomplete. Current status is tracked in [tickets/README.md](tickets/README.md).
 
 **Authority:** [Context.md](Context.md), [ADR.md](ADR.md), and the owner's final instruction excluding legacy Drive migration. **Execution:** [tickets/README.md](tickets/README.md).
 
@@ -28,6 +28,7 @@ Required outcomes:
 | R14 | Canonical host, callbacks, verified senders, configuration, and service limits are validated before release. |
 | R15 | Writes are validated, conflict-aware, retry-safe, and cannot overwrite unrelated account/security data. |
 | R16 | The public showcase is retained and reflects verified capabilities without exposing private data. |
+| R17 | A user may optionally save a syntactically validated purchase email and a plain-text payment-method description on a domain record. |
 
 Out of scope: native-client redevelopment, legacy Drive migration, registrar account operations, ownership verification, billing/subscriptions, shared portfolios, arbitrary AI tools, attachment-specific AI intake, outbound webhooks, app-sent renewal emails, and a full offline mutation/synchronization engine. Deferred ideas do not add requirements.
 
@@ -89,12 +90,14 @@ Use shared schema version 2 for the new canonical record. The public mutable fie
 | `autoRenew` | Boolean or null; default null for unknown. |
 | `registrationDate`, `billingDate`, `expirationDate` | Nullable valid `YYYY-MM-DD`; at least billing or expiration must exist. |
 | `registrationCostMinor`, `renewalCostMinor` | Null or non-negative safe integer in that currency's minor units. |
+| `purchaseEmail` | Nullable trimmed email string matching the application's email syntax check; not inbox-verified. |
+| `paymentMethod` | Nullable user-authored plain text, maximum 2,000 characters. No parsing or tokenization. |
 | `currency` | USD, GBP, EUR, INR, CNY, JPY, or CAD; default from settings. |
 | `notes` | String, default empty, bounded to 8 KiB UTF-8. |
 | `isArchived` | Boolean, default false. |
 | `reminders` | Validated reminder configuration described below. |
 
-Server-owned fields: opaque stable `id`, `normalizedName`, `schemaVersion`, positive integer `revision`, `createdAt`, and `updatedAt`. Client attempts to set server fields, owner IDs, roles, credentials, unknown keys, or arbitrary document paths are rejected. External Calendar/Tasks references are separate server-controlled integration metadata.
+Server-owned fields: opaque stable `id`, `normalizedName`, `schemaVersion`, positive integer `revision`, `createdAt`, and `updatedAt`. Client attempts to set server fields, owner IDs, roles, credentials, unknown keys, or arbitrary document paths are rejected. External Calendar/Tasks references are separate server-controlled integration metadata. Both purchase fields are optional private domain data, editable on advanced record surfaces, and included in user-authorized domain backups/exports; they do not affect spending calculations or constitute application billing data.
 
 Normalize consistently across UI, API, CLI, and imports: trim surrounding whitespace, extract the hostname from a pasted HTTP(S) URL, remove its trailing dot, lowercase, and use IDNA ASCII normalization. Do not strip meaningful subdomains such as `www` or guess a registrable root. Reject malformed hosts, wildcards, credentials in URLs, IP addresses, and empty names. No DNS/WHOIS/network lookup is needed to save a name. Normalization checks formatting, not ownership.
 

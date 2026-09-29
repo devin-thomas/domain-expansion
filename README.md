@@ -2,13 +2,13 @@
 
 **Website Domain Tracker** — a small number of impactful items, backed by a richer domain model.
 
-This is the canonical web implementation repository. The earlier [Flutter repository](https://github.com/devin-thomas/domain-expansion) is a domain-semantics reference, not the codebase to continue.
+This is the canonical web implementation repository at [devin-thomas/domain-expansion](https://github.com/devin-thomas/domain-expansion). The earlier Flutter project is preserved in the archived [domain-expansion-flutter repository](https://github.com/devin-thomas/domain-expansion-flutter). See [repository consolidation](docs/REPOSITORY-CONSOLIDATION.md) for the history-preservation record.
 
 ## Current status
 
-DEW-001 through DEW-016 are implemented in this React/TypeScript/Vite app. Automated verification on 2026-09-27 is recorded in each ticket: typecheck, production build, client-boundary scan, unit/API/CLI tests, Firestore emulator rules and Admin SDK isolation, and Playwright in Chrome at 390×844 and 1440×900.
+DEW-001 through DEW-016 have implementation and local acceptance evidence recorded in their tickets. The purchase-field suite passed 10/10; final API/CLI checks passed 22 tests, unit checks 18, Firestore emulator checks 5, and the browser suite 10/10; lint and production build passed on 2026-09-28. These checks are local and do not establish production-host acceptance.
 
-DEW-017 is **Blocked**. `domains.devthomas.site` is the intended host. This repository has not changed DNS, verified a Firebase sender, delivered mail to a real inbox, called live Gemini or Google APIs, checked a physical phone, or changed billing. Mocked provider tests are not live-provider success. See [docs/RELEASE.md](docs/RELEASE.md).
+DEW-017 is **Blocked** pending production deployment and live application acceptance. DNS and Firestore are provisioned, Firebase Auth is configured for the canonical host, Resend reports `devthomas.site` verified, and configured Gemini models accepted structured generation requests. Twenty production environment variables are present in Vercel. The web application has not yet been deployed and smoke-tested at the canonical host; the Resend sending key is being created after credential approval, and live notification delivery remains pending. See [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Build pack
 
@@ -19,12 +19,14 @@ DEW-017 is **Blocked**. `domains.devthomas.site` is the intended host. This repo
 | [SPEC.md](SPEC.md) | Testable implementation contract, API behavior, security boundaries, and release checks. |
 | [tickets/README.md](tickets/README.md) | Ordered execution queue and requirement coverage. |
 | [Ideas.md](Ideas.md) | Useful but non-binding deferred work. |
+| [docs/RELEASE.md](docs/RELEASE.md) | Provider setup, release gates, and rollback evidence. |
+| [docs/REPOSITORY-CONSOLIDATION.md](docs/REPOSITORY-CONSOLIDATION.md) | Safe history-preserving repository rename sequence. |
 
 Follow the current user decision → Context → ADR rationale → SPEC → ticket acceptance criteria authority order. Update the pack when implementation uncovers a material contradiction; do not silently change the product. The next incomplete item is [DEW-017](tickets/DEW-017-release.md).
 
 ## Product boundaries
 
-Quick Add keeps five ordinary input groups. AI Quick Add produces compact editable proposals and requires explicit approval. Advanced data stays behind deliberate expansion. Firebase/Firestore is the primary account/database platform; Google integrations are optional. Other users bring their own Gemini keys; a single configured owner UID may use the server credential. Admin access manages admission, not other users' portfolios. Automation uses scoped API tokens and a thin CLI. Archive is normal; permanent deletion is separately authorized. Legacy Drive migration is excluded.
+Quick Add keeps five ordinary input groups. AI Quick Add produces compact editable proposals and requires explicit approval. Optional purchase email and payment-method description are edited in advanced domain details and follow the signed-in user's normal record/API/export permissions. Firebase/Firestore is the primary account/database platform; Google integrations are optional. Other users bring their own Gemini keys; a single configured owner UID may use the server credential. Admin access manages admission, not other users' portfolios. Automation uses scoped API tokens and a thin CLI. Archive is normal; permanent deletion is separately authorized. Legacy Drive migration is excluded.
 
 ## Running
 

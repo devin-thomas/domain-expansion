@@ -21,6 +21,7 @@ Contract: SPEC sections 4–5 and 9; R07, R08, R15.
 - Import preview makes no domain writes; commit revalidates caller, content, policy, and revisions. Omitted records are never deleted.
 - API exports are owner-only domain data and exclude account/security/provider information. User settings restore cannot be smuggled through a domain-scoped PAT.
 - Unknown/server-owned fields, foreign IDs, illegal state transitions, and currency reinterpretation are rejected consistently.
+- Create, patch, import, and export use the same optional `purchaseEmail` syntax validation and plain-text `paymentMethod` field rules as the UI; omitted patch fields are preserved.
 - API examples validate against real schemas/handlers; error codes, pagination, null semantics, money units, scopes, and destructive behavior are documented.
 
 ## Dependencies
@@ -29,4 +30,4 @@ Contract: SPEC sections 4–5 and 9; R07, R08, R15.
 
 ## Verification
 
-2026-09-27. `tests/api/matrix.test.ts` and `tests/api/routes.test.ts` cover health, isolation, idempotency, revisions, batch atomicity, import preview with no write, commit that keeps omitted records, and export text that does not contain token or Gemini material. Documented OpenAPI paths are checked against `ROUTE_TABLE`. `npm run openapi` wrote `docs/openapi.json`. SQL import is rejected.
+2026-09-27 baseline: API matrix and route tests cover health, isolation, idempotency, revisions, batch atomicity, import preview/commit, export isolation, and OpenAPI route mapping. The focused payment-field unit/API tests passed 10/10 on 2026-09-28, including import/export round trips. Final integrated API/OpenAPI verification remains pending.

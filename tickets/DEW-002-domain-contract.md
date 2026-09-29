@@ -14,7 +14,7 @@ Contract: SPEC sections 3–4; R04, R15.
 
 ## Acceptance Criteria
 
-- All approved advanced fields exist, including separate billing/expiration and registration/renewal costs; unknown auto-renew/cost remain null.
+- All approved advanced fields exist, including separate billing/expiration and registration/renewal costs, optional regex-validated `purchaseEmail`, and optional plain-text `paymentMethod` (maximum 2,000 characters); unknown auto-renew/cost remain null.
 - Quick Add maps its single renewal-date input to expiration only; effective billing derives by fallback.
 - Server-owned or unknown fields are rejected, not silently accepted by a TypeScript cast.
 - Normalization preserves meaningful subdomains, handles supported IDNA input, and never checks DNS or claims ownership.
@@ -29,4 +29,4 @@ Contract: SPEC sections 3–4; R04, R15.
 
 ## Verification
 
-2026-09-27. `tests/unit/domain.test.ts` (7 tests) covers normalization, money minor units, date handling, reminders, and partial updates. `tests/unit/backup-vault.test.ts` round-trips a record that includes registrar, DNS, ownership, lifecycle, intent, auto-renew, both dates, both costs, currency, notes, archive, and reminders through JSON, YAML, and XLSX. A quick PATCH in `tests/api/matrix.test.ts` keeps notes, DNS, and auto-renew when only registrar changes.
+2026-09-27 baseline: `tests/unit/domain.test.ts` (7 tests) covers normalization, money minor units, date handling, reminders, and partial updates. The rich backup fixture covers the original advanced fields. On 2026-09-28, the focused payment-field unit/API suite passed 10/10, including email rejection, plaintext handling, bounds, clear/partial update, older-record compatibility, and format round trips. The final local unit/API/CLI and emulator suites also passed as recorded in DEW-016.

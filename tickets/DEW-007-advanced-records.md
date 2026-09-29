@@ -15,6 +15,7 @@ Contract: SPEC sections 3–4 and 5; R04, R09, R11.
 ## Acceptance Criteria
 
 - All approved rich fields can be read/edited on deliberate advanced surfaces; hidden fields survive ordinary edits unchanged.
+- Advanced details optionally collect a syntactically validated purchase email and a plain-text payment-method description; partial edits preserve either field when omitted, and explicit clearing is supported.
 - Billing/expiration and registration/renewal costs remain distinct. A currency-change warning clears old amounts only after acknowledgment.
 - Dashboard presents next payment, currency-separated 12-month totals with unknown-cost disclosure, and a compact upcoming list.
 - Ownership, lifecycle, intention, auto-renew, and archive are independent; changing one does not fabricate external registrar state.
@@ -29,4 +30,4 @@ Contract: SPEC sections 3–4 and 5; R04, R09, R11.
 
 ## Verification
 
-2026-09-27. The rich-record fixture in `tests/unit/backup-vault.test.ts` and the partial PATCH in `tests/api/matrix.test.ts` keep advanced fields. Playwright opens More details only after an explicit click and finds zero advanced panels before that. Archive and guarded permanent delete are covered by `tests/cli/cli.test.ts` (a read/write token cannot delete; the record remains). No separate screenshot archive was saved.
+2026-09-28. The final browser suite passed 10/10, focused purchase-field checks passed 10/10, and the final API/CLI, unit, emulator, lint, and build checks passed. Existing CLI coverage verifies archive and guarded permanent delete. No separate screenshot archive or physical-device check is claimed.
