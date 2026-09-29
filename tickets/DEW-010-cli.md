@@ -1,6 +1,6 @@
 # DEW-010 — Deliver the thin official CLI
 
-**Status:** Blocked
+**Status:** Complete
 
 ## Goal
 
@@ -30,4 +30,4 @@ Contract: SPEC section 10; R07, R08, R09.
 
 ## Verification
 
-2026-09-29. `tests/cli/cli.test.ts` drives `cli/main.ts` against the local API: help, version `1.0.0`, refusal of `--token`, add, idempotent replay, list, archive, and permanent delete refused for a read/write token. On Windows 11 Pro (build 26200), PowerShell 7.6.6, Node 24.18.0, and npm 12.1.0, `npm link` installed the command and global `domain-expansion help` plus `domain-expansion version` returned help and version `1.0.0`. The current 38/38 API/CLI aggregate was run on Windows; the earlier Linux CLI run is historical evidence only. macOS acceptance remains unverified: the available `m1` SSH connection on port 22 timed out, so the documented installation and runtime commands have not been tested there. Keep this ticket Blocked until macOS acceptance is completed.
+2026-09-29. `tests/cli/cli.test.ts` drives `cli/main.ts` against the local API: refusal of `--token`, help/version, add, idempotent replay, list, archive, and permanent delete refused for a read/write token. New failure fixtures confirm pagination/download export errors preserve an existing backup file. On Windows 11 Pro (build 26200), PowerShell 7.6.6, Node 24.18.0, and npm 12.1.0, `npm link` installed the command and global `domain-expansion --help`, `domain-expansion --version`, and `domain-expansion list --version` worked. The current API/CLI aggregate passes 48/48 on Windows; the earlier Linux run is historical evidence only. Hosted macOS acceptance passed in GitHub Actions run [36597634325](https://github.com/devin-thomas/domain-expansion/actions/runs/36597634325) at workflow commit `1bd5ad4edccc9ab9990ca460ae449f60c4159630`: macOS 26.6.2, arm64, Node 24.18.0, npm 11.16.0; `npm ci`, `npm link`, global `--help`/`--version`, the 48/48 API/CLI suite, and `npm unlink` all succeeded. The separate local `m1` SSH connection timed out, but the hosted run verifies actual macOS CLI runtime acceptance. DEW-010 is Complete.
