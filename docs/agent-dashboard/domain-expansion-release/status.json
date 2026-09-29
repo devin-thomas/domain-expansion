@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "task_id": "domain-expansion-release",
-  "updated_at": "2026-09-29T18:40:41Z",
+  "updated_at": "2026-09-29T19:00:23Z",
   "title": "Domain Expansion release",
-  "overall_state": "healthy",
-  "phase": "Technical release live; human acceptance deferred",
+  "overall_state": "blocked",
+  "phase": "Technical release live; final acceptance needs user participation",
   "repository": {
     "name": "devin-thomas/domain-expansion",
     "branch": "main",
@@ -12,13 +12,13 @@
     "canonical_url": "https://domains.devthomas.site"
   },
   "action_required": {
-    "text": "No action required from you right now.",
-    "reason": "You chose to defer the remaining human acceptance checks until the final handoff. No further checks are being requested now.",
-    "smallest_user_action": "None now. Review the deferred checks at final handoff."
+    "text": "Your participation is required to finish the release.",
+    "reason": "DEW-016 and DEW-017 remain blocked on Search Console ownership, Google consent and provider actions, Galaxy capture/edit, a screen-reader walkthrough, and actual 200% browser zoom. The shared Google project's scope declarations also need reconciliation before publication.",
+    "smallest_user_action": "Reply 'resume final acceptance' when ready for one coordinated pass through the remaining Google and device checks."
   },
   "current_activity": {
-    "operation": "The corrected build is live, and a read-only Google provider audit identified the exact remaining ownership and scope-declaration gaps. Search Console lists devthomas.site as Not verified; the OAuth app remains owner-only in Testing.",
-    "next_checkpoint": "At final handoff, revisit the explicitly deferred device, accessibility, and Google provider checks. No immediate user action is needed."
+    "operation": "The technical release is live, but the goal is blocked at final acceptance. No autonomous checks are running while the required user and provider actions remain deferred.",
+    "next_checkpoint": "When the user resumes final acceptance, reconcile Google ownership/scopes and guide one consolidated provider and device walkthrough."
   },
   "milestones": [
     {
@@ -58,24 +58,20 @@
       "impact": "DEW-017 remains blocked; Google-integrated actions are not provider-accepted.",
       "owner": "User/provider acceptance at final handoff",
       "recovery_path": "At final handoff, reconcile shared-project scopes, verify domain ownership, then decide whether to authorize real Google consent/provider actions and publication. Record each actual result separately.",
-      "independent_work": "The technical release and private status dashboard can continue now."
+      "independent_work": "No remaining autonomous work closes this gate; the technical release is live."
     },
     {
       "cause": "Android capture/edit, a screen-reader walkthrough, and actual browser-level 200% zoom have not been verified.",
       "impact": "Human accessibility and Android acceptance remain open; CSS zoom emulation is not browser zoom evidence.",
       "owner": "User/device acceptance at final handoff",
       "recovery_path": "Complete the checks at final handoff when the user is ready.",
-      "independent_work": "The technical release and private status dashboard can continue now."
+      "independent_work": "No remaining autonomous work replaces the physical-device and assistive-technology evidence."
     }
   ],
   "warnings": [
     {
       "label": "Monitoring",
       "text": "An earlier deployment exposed the compiled server bundle and source map. The current production aliases no longer return those assets; route checks do not establish whether prior copies were downloaded or whether credentials were embedded."
-    },
-    {
-      "label": "No action needed",
-      "text": "The user explicitly deferred remaining human checks to final handoff; there is no immediate user request."
     },
     {
       "label": "Monitoring",
@@ -114,8 +110,9 @@
     }
   ],
   "next_up": [
-    "At final handoff, perform the deferred Android capture/edit, screen-reader, and actual browser-level zoom checks.",
-    "At final handoff, reconcile OAuth declarations and Search Console ownership, then decide whether to authorize Google consent, provider actions, and publication.",
+    "Wait for the user's 'resume final acceptance' reply; do not repeat background checks.",
+    "Reconcile OAuth declarations and Search Console ownership, then perform the approved Google consent and provider actions.",
+    "Complete Galaxy capture/edit, screen-reader, and actual browser-level zoom checks; close DEW-016/017 only with evidence.",
     "Keep the dashboard available for the final handoff while the host is awake."
   ],
   "activity_log": [
@@ -158,21 +155,25 @@
     {
       "timestamp": "2026-09-29T18:40:41Z",
       "event": "Read-only Google provider inspection confirmed Search Console marks devthomas.site Not verified, OAuth remains External/Testing with one test user, and shared scope declarations omit calendar.events.owned while retaining calendar.events and gmail.readonly. No provider settings or access were changed."
+    },
+    {
+      "timestamp": "2026-09-29T19:00:23Z",
+      "event": "Corrected the dashboard after the goal entered blocked status: final acceptance now shows user participation required, with one resume action and the outstanding provider/device gates listed."
     }
   ],
   "walk_away": {
     "last_verified_good_state": "Build-boundary source 4753e1b was served by READY deployment dpl_2ZWRrTPU8zkeXB2bcsg6yZg9ZcBb on the canonical alias. Six routes returned HTTP 200; former public server-artifact paths returned HTML on both production aliases. Underlying application source 2c1cdc3 passed the eight-group live backend verifier, API/CLI 77/77, unit 65/65, and hosted macOS CLI. Emulator 8/8 passed on e644c23; browser 19/19 and lint/build passed on 4753e1b.",
-    "unfinished_operation": "Google provider and remaining device/accessibility acceptance are deferred by user instruction.",
-    "exact_next_safe_step": "At final handoff, review the deferred checks; reconcile shared OAuth scopes and Search Console ownership before any Google publication or provider actions.",
+    "unfinished_operation": "Final Google provider and device/accessibility acceptance are blocked pending the user's participation.",
+    "exact_next_safe_step": "Wait for the user's 'resume final acceptance' reply, then coordinate the remaining Google and device checks without repeating completed technical work.",
     "touched_files_or_services": "Build-boundary source 4753e1b is on origin/main. The dashboard folder is tracked; Tailscale Serve points to its dedicated loopback static server. No private host details or secrets are in the repository snapshot.",
     "expected_running_processes": "One loopback Python static server and one Tailscale Serve mapping; local runtime metadata records their details.",
-    "user_action": "None until final handoff."
+    "user_action": "Reply 'resume final acceptance' when ready for the coordinated final checks."
   },
   "delivery": {
     "mode": "Portable repository snapshot and private Tailscale Serve",
     "native_artifact": "Unavailable in this host.",
     "tailscale": "Host-side private HTTPS endpoint verified with matching dashboard identity and timestamp; the tailnet URL is shared in chat, not committed.",
-    "last_verified": "2026-09-29T18:40:41Z; read-only Search Console and Google Auth Platform state, READY canonical Vercel alias, six live routes, public server-artifact paths no longer expose code, browser 19/19 and build/lint on 4753e1b, earlier emulator 8/8 and underlying implementation verifier.",
+    "last_verified": "2026-09-29T19:00:23Z; dashboard action state reconciled with the blocked goal. Earlier evidence includes READY canonical Vercel alias, six live routes, public server-artifact repair, browser 19/19, emulator 8/8, and the underlying implementation verifier.",
     "repository_persistence": "Dashboard source and state are tracked on main; this update is committed as a checkpoint.",
     "limitation": "Tailnet access depends on this host staying awake and connected. A second-device dashboard visit has not been independently tested."
   }
