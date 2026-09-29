@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="dashboard-task-id" content="domain-expansion-release">
+  <meta name="dashboard-updated-at" content="2026-09-29T17:27:54Z">
+  <meta name="color-scheme" content="dark light">
+  <title>Domain Expansion release status</title>
+  <style>
+    :root { color-scheme: dark; --bg: #111315; --panel: #1a1e21; --text: #edf2f3; --muted: #a9b5b8; --line: #384346; --accent: #7ed3c3; --warn: #f2cb7c; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(ellipse at 8% 0%, #203532 0, transparent 36rem), var(--bg); color: var(--text); font: 16px/1.55 system-ui, sans-serif; }
+    main { width: min(100% - 2rem, 1000px); margin: 0 auto; padding: 2rem 0 4rem; }
+    header { border-bottom: 1px solid var(--line); padding: 1rem 0 1.4rem; }
+    .eyebrow { color: var(--accent); font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: .35rem 0; font-size: clamp(2rem, 7vw, 3.4rem); line-height: 1.08; }
+    h2 { margin: 0 0 .6rem; font-size: 1.2rem; }
+    p { margin: .4rem 0; }
+    .meta, .muted { color: var(--muted); }
+    .state { display: inline-block; border: 1px solid var(--accent); border-radius: 999px; padding: .12rem .65rem; color: var(--accent); font-size: .86rem; }
+    .action { margin: 1.2rem 0; padding: 1rem 1.1rem; border: 2px solid var(--accent); border-radius: .8rem; background: #172421; }
+    section { margin-top: 1.2rem; padding: 1.1rem; border: 1px solid var(--line); border-radius: .8rem; background: color-mix(in srgb, var(--panel) 92%, transparent); }
+    ul, ol { padding-left: 1.35rem; margin: .45rem 0 0; }
+    li + li { margin-top: .55rem; }
+    a { color: var(--accent); text-underline-offset: .18em; }
+    a:focus-visible { outline: 3px solid var(--warn); outline-offset: 3px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: .8rem; }
+    .card { padding: .85rem; border: 1px solid var(--line); border-radius: .55rem; }
+    .label { color: var(--warn); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+    @media (max-width: 420px) { main { width: min(100% - 1.25rem, 1000px); padding-top: 1rem; } section { padding: .85rem; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">Release dashboard</div>
+      <h1 id="title"></h1>
+      <p><span class="state" id="state"></span> <span id="phase"></span></p>
+      <p class="meta" id="repository"></p>
+      <p class="meta">Updated <time id="updated"></time></p>
+      <p class="meta" id="refresh-state" role="status">Showing the saved snapshot.</p>
+    </header>
+    <section class="action" aria-labelledby="action-heading">
+      <h2 id="action-heading">Action required</h2>
+      <p id="action-text"></p>
+      <p class="muted" id="action-reason"></p>
+    </section>
+    <section aria-labelledby="activity-heading">
+      <h2 id="activity-heading">Current activity</h2>
+      <p id="activity"></p>
+      <p class="muted" id="checkpoint"></p>
+    </section>
+    <section aria-labelledby="milestones-heading">
+      <h2 id="milestones-heading">Milestones</h2>
+      <div id="milestones" class="grid"></div>
+    </section>
+    <section aria-labelledby="blockers-heading">
+      <h2 id="blockers-heading">Open gates</h2>
+      <ul id="blockers"></ul>
+    </section>
+    <section aria-labelledby="warnings-heading">
+      <h2 id="warnings-heading">Watch items</h2>
+      <ul id="warnings"></ul>
+    </section>
+    <section aria-labelledby="decisions-heading">
+      <h2 id="decisions-heading">Decisions</h2>
+      <ul id="decisions"></ul>
+    </section>
+    <section aria-labelledby="next-heading">
+      <h2 id="next-heading">Next up</h2>
+      <ol id="next"></ol>
+    </section>
+    <section aria-labelledby="outputs-heading">
+      <h2 id="outputs-heading">Outputs</h2>
+      <ul id="outputs"></ul>
+    </section>
+    <section aria-labelledby="log-heading">
+      <h2 id="log-heading">Activity log</h2>
+      <ul id="log"></ul>
+    </section>
+    <section aria-labelledby="delivery-heading">
+      <h2 id="delivery-heading">Delivery and persistence</h2>
+      <p id="delivery"></p>
+    </section>
+    <section aria-labelledby="walk-heading">
+      <h2 id="walk-heading">Walk-away snapshot</h2>
+      <p id="walk"></p>
+    </section>
+  </main>
+  <script id="dashboard-data" type="application/json">
+{
+  "schema_version": 1,
+  "task_id": "domain-expansion-release",
+  "updated_at": "2026-09-29T17:27:54Z",
+  "title": "Domain Expansion release",
+  "overall_state": "working",
+  "phase": "Technical release and private dashboard delivery",
+  "repository": {
+    "name": "devin-thomas/domain-expansion",
+    "branch": "main",
+    "application_commit": "bc5601eb4e969a9d8c19f6eada13d8c499629341",
+    "canonical_url": "https://domains.devthomas.site"
+  },
+  "action_required": {
+    "text": "No action required from you right now.",
+    "reason": "You chose to defer the remaining human acceptance checks until the final handoff. Technical release and dashboard work are continuing.",
+    "smallest_user_action": "None now. Review the deferred checks at final handoff."
+  },
+  "current_activity": {
+    "operation": "The three screen-reader source fixes are committed and pushed. Lint, build, and all 18 browser tests pass. The private dashboard is being prepared for Tailscale Serve.",
+    "next_checkpoint": "Commit this dashboard snapshot, verify its local endpoint, then configure and verify the private tailnet URL."
+  },
+  "milestones": [
+    {
+      "name": "Canonical application and API release",
+      "state": "complete",
+      "detail": "The latest recorded Vercel release is READY as dpl_BpiFAQzwJmMbzyW9WW1vMrzUTgYm. The six public routes returned HTTP 200. Cloudflare Worker f8e55e50-03d0-495f-b9e1-12f5e50feba9 serves the /api proxy."
+    },
+    {
+      "name": "Backend and production verification",
+      "state": "complete",
+      "detail": "The eight-group production verifier passed on the recorded release; API/CLI 77/77, unit 63/63, browser 18/18, lint, build, boundary, and native-runtime checks passed. Firestore emulator 8/8 is retained from the prior run."
+    },
+    {
+      "name": "Desktop, CLI, and reported device acceptance",
+      "state": "complete",
+      "detail": "Windows and hosted macOS CLI acceptance passed. The user reported iPhone 16 Pro Safari sign-in, capture, and edit success, and Galaxy S21 Ultra Chrome sign-in success."
+    },
+    {
+      "name": "UI accessibility source fixes",
+      "state": "complete",
+      "detail": "Gemini key labeling, per-proposal Include labels, and live Google result announcements are committed as bc5601e; lint, build, and browser 18/18 pass. The human screen-reader and browser-zoom walkthroughs remain deferred."
+    },
+    {
+      "name": "Google provider acceptance and publication",
+      "state": "blocked",
+      "detail": "Google consent and Calendar/Tasks/Sheets/Drive actions, OAuth publication or verification, and Search Console/domain ownership evidence are still pending. No Google provider grant or action is claimed."
+    }
+  ],
+  "blockers": [
+    {
+      "cause": "Google provider consent, real provider actions, and publication/ownership verification have not been completed.",
+      "impact": "DEW-017 remains blocked; Google-integrated actions are not provider-accepted.",
+      "owner": "User/provider acceptance at final handoff",
+      "recovery_path": "At final handoff, decide whether to authorize the real Google consent and provider walkthrough, then record actual provider and publication results.",
+      "independent_work": "The technical release and private status dashboard can continue now."
+    },
+    {
+      "cause": "Android capture/edit, a screen-reader walkthrough, and actual browser-level 200% zoom have not been verified.",
+      "impact": "Human accessibility and Android acceptance remain open; CSS zoom emulation is not browser zoom evidence.",
+      "owner": "User/device acceptance at final handoff",
+      "recovery_path": "Complete the checks at final handoff when the user is ready.",
+      "independent_work": "The technical release and private status dashboard can continue now."
+    }
+  ],
+  "warnings": [
+    {
+      "label": "No action needed",
+      "text": "The user explicitly deferred remaining human checks to final handoff; there is no immediate user request."
+    },
+    {
+      "label": "Monitoring",
+      "text": "Earlier Firebase and Resend messages were observed in spam. Future inbox placement is unverified."
+    },
+    {
+      "label": "Agent handling",
+      "text": "Three screen-reader source fixes passed automated checks; no live screen-reader walkthrough is claimed."
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Defer remaining human acceptance checks until final handoff.",
+      "rationale": "The user asked to postpone those checks while implementation and verification continue.",
+      "timestamp": "2026-09-29T17:27:54Z",
+      "reversibility": "Can be resumed earlier if the user requests it.",
+      "status": "final for the current work phase"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "Human-readable status",
+      "path": "./STATUS.md"
+    },
+    {
+      "name": "Machine-readable status",
+      "path": "./status.json"
+    },
+    {
+      "name": "Portable dashboard snapshot",
+      "path": "./index.html"
+    },
+    {
+      "name": "Release notes and rollback record",
+      "path": "../../RELEASE.md"
+    }
+  ],
+  "next_up": [
+    "Commit and verify the dashboard files in the canonical repository.",
+    "Serve and verify the dashboard privately over Tailscale.",
+    "At final handoff, perform the deferred Android capture/edit, screen-reader, and actual browser-level zoom checks.",
+    "At final handoff, decide whether to authorize Google consent, provider actions, publication, and ownership verification.",
+    "Record the final technical release and delivery evidence."
+  ],
+  "activity_log": [
+    {
+      "timestamp": "2026-09-29T17:23:31Z",
+      "event": "Created a sanitized portable release dashboard from the current release record; live checks returned HTTP 200 for all six canonical routes."
+    },
+    {
+      "timestamp": "2026-09-29T17:23:31Z",
+      "event": "Recorded three screen-reader issues for active source remediation and preserved the user's decision to defer remaining human checks until final handoff."
+    },
+    {
+      "timestamp": "2026-09-29T17:27:54Z",
+      "event": "Committed and pushed accessibility fixes as bc5601e; lint, build, and all 18 browser tests passed."
+    }
+  ],
+  "walk_away": {
+    "last_verified_good_state": "Canonical application, API, public routes, and edge proxy are live according to the release record; all six routes returned HTTP 200 in the current read-only check.",
+    "unfinished_operation": "Private dashboard delivery is being prepared; Google and remaining device/accessibility acceptance are deferred.",
+    "exact_next_safe_step": "Commit the reviewed dashboard files, start its loopback listener, and verify the Tailscale endpoint.",
+    "touched_files_or_services": "Accessibility source commit bc5601e is on origin/main. Dashboard files are newly created. No dashboard service is running yet.",
+    "expected_running_processes": "None for this dashboard yet.",
+    "user_action": "None until final handoff."
+  },
+  "delivery": {
+    "mode": "Portable repository snapshot; private Tailscale delivery in progress",
+    "native_artifact": "Unavailable in this host.",
+    "tailscale": "Local device online and API verification passed; dashboard listener and Serve endpoint are not configured yet.",
+    "last_verified": "2026-09-29T17:27:54Z; source tests passed and six canonical routes returned HTTP 200 in the preceding check.",
+    "repository_persistence": "Dashboard snapshot is prepared for a path-scoped commit.",
+    "limitation": "The private dashboard URL is not verified yet."
+  }
+}
+  </script>
+  <script>
+    const put = (id, value) => { document.getElementById(id).textContent = value; };
+    const item = (tag, text) => { const node = document.createElement(tag); node.textContent = text; return node; };
+    const saved = JSON.parse(document.getElementById('dashboard-data').textContent);
+    function render(d) {
+      put('title', d.title);
+      put('state', d.overall_state);
+      put('phase', d.phase);
+      put('repository', `${d.repository.name} · ${d.repository.branch} · app ${d.repository.application_commit} · ${d.repository.canonical_url}`);
+      const time = document.getElementById('updated');
+      time.dateTime = d.updated_at;
+      time.textContent = new Date(d.updated_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Chicago' }) + ' America/Chicago';
+      put('action-text', d.action_required.text);
+      put('action-reason', `${d.action_required.reason} Smallest action: ${d.action_required.smallest_user_action}`);
+      put('activity', d.current_activity.operation);
+      put('checkpoint', `Next checkpoint: ${d.current_activity.next_checkpoint}`);
+      for (const id of ['milestones', 'blockers', 'warnings', 'decisions', 'next', 'outputs', 'log']) document.getElementById(id).replaceChildren();
+      const milestoneRoot = document.getElementById('milestones');
+      for (const milestone of d.milestones) { const card = document.createElement('article'); card.className = 'card'; const label = item('div', milestone.state.replaceAll('_', ' ')); label.className = 'label'; card.append(label, item('h3', milestone.name), item('p', milestone.detail)); milestoneRoot.append(card); }
+      const blockerRoot = document.getElementById('blockers');
+      for (const blocker of d.blockers) blockerRoot.append(item('li', `${blocker.cause} Impact: ${blocker.impact} Owner: ${blocker.owner}. Recovery: ${blocker.recovery_path} Independent work: ${blocker.independent_work}`));
+      const warningRoot = document.getElementById('warnings');
+      for (const warning of d.warnings) warningRoot.append(item('li', `${warning.label}: ${warning.text}`));
+      const decisionRoot = document.getElementById('decisions');
+      for (const decision of d.decisions) decisionRoot.append(item('li', `${decision.decision} ${decision.rationale} Recorded ${decision.timestamp}; ${decision.status}; ${decision.reversibility}`));
+      const nextRoot = document.getElementById('next'); for (const next of d.next_up) nextRoot.append(item('li', next));
+      const outputRoot = document.getElementById('outputs');
+      for (const output of d.outputs) { const li = document.createElement('li'); const a = document.createElement('a'); a.href = output.path; a.textContent = output.name; li.append(a); outputRoot.append(li); }
+      const logRoot = document.getElementById('log');
+      for (const entry of d.activity_log) logRoot.append(item('li', `${entry.timestamp}: ${entry.event}`));
+      put('delivery', `${d.delivery.mode}. Native artifact: ${d.delivery.native_artifact} Tailscale: ${d.delivery.tailscale} Persistence: ${d.delivery.repository_persistence} Last verified: ${d.delivery.last_verified} ${d.delivery.limitation}`);
+      put('walk', `${d.walk_away.last_verified_good_state} Unfinished: ${d.walk_away.unfinished_operation} Next safe step: ${d.walk_away.exact_next_safe_step} Touched: ${d.walk_away.touched_files_or_services} Expected processes: ${d.walk_away.expected_running_processes} User action: ${d.walk_away.user_action}`);
+    }
+    render(saved);
+    async function refresh() {
+      try {
+        const response = await fetch(`./status.json?at=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const live = await response.json();
+        if (live.task_id !== saved.task_id) throw new Error('task identity mismatch');
+        render(live);
+        put('refresh-state', 'Live status refreshed from this private endpoint.');
+      } catch (error) {
+        put('refresh-state', `Live refresh unavailable; showing the last saved status. ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+    if (location.protocol === 'https:' || location.protocol === 'http:') {
+      void refresh();
+      setInterval(() => void refresh(), 30000);
+    }
+  </script>
+</body>
+</html>
