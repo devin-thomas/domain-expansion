@@ -31,6 +31,8 @@ Contract: SPEC section 13; R01–R13, R15.
 
 ## Verification
 
+2026-09-29 live follow-up: the eight-group production verifier passed on application implementation `2c1cdc300e768b2379e524e25a99aa11e1857cd4` served by READY Vercel `dpl_HFiEBsBNzkBF8AsZpVMBvueTpV7d`. It covered owner authentication, canonical health/OpenAPI, anonymous and unapproved isolation, CLI PAT scopes and revocation, payment fields, idempotency and ETags, import preview/commit, and credential-free JSON export. The verifier reported removal of synthetic records and temporary identity and revocation of temporary PATs. Deferred human and Google provider gates remain open.
+
 2026-09-29 follow-up: source `2c1cdc300e768b2379e524e25a99aa11e1857cd4` passes API/CLI 77/77, unit 65/65, browser 18/18, lint, build, boundary, and native runtime. The spreadsheet apostrophe/CSV footer and CLI purchase-detail regressions now have focused coverage; a failed Google script load can be retried in the same session. These checks do not replace the deferred Android, screen-reader, actual browser zoom, or real Google provider acceptance.
 
 2026-09-27 baseline, Node.js 22.14.0, OpenJDK 21.0.10, Chrome via Playwright 1.55.1.
