@@ -46,6 +46,42 @@ describe('bounded retry run evidence', () => {
     } finally { failure.mockRestore(); await harness.close(); }
   });
 
+  it('treats missing or incorrect schedule headers as operator runs', async () => {
+    const harness = await startHarness();
+    try {
+      await call(harness.base, 'retry-secret', 'GET', path, { headers: providerHeaders });
+      const provider = await harness.deps.store.get('mailRetryRuns/vercel');
+      for (const headers of [{ 'user-agent': 'vercel-cron/1.0' }, { ...providerHeaders, 'x-vercel-cron-schedule': '* * * * *' }]) {
+        expect((await call(harness.base, 'retry-secret', 'GET', path, { headers })).status).toBe(200);
+        expect(await harness.deps.store.get('mailRetryRuns/operator')).toMatchObject({ source: 'operator', schedule: null });
+        expect(await harness.deps.store.get('mailRetryRuns/vercel')).toEqual(provider);
+      }
+    } finally { await harness.close(); }
+  });
+
+  it('preserves a newer run when an earlier start transaction is delayed', async () => {
+    const harness = await startHarness();
+    const transaction = harness.deps.store.transaction.bind(harness.deps.store);
+    let release!: () => void;
+    let started!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const waiting = new Promise<void>((resolve) => { started = resolve; });
+    const delayed = vi.spyOn(harness.deps.store, 'transaction').mockImplementationOnce(async (fn) => {
+      started();
+      await gate;
+      return transaction(fn);
+    });
+    const older = call(harness.base, 'retry-secret', 'GET', path, { headers: providerHeaders });
+    try {
+      await waiting;
+      harness.deps.now = () => new Date('2026-03-01T15:00:01Z');
+      const newer = await call(harness.base, 'retry-secret', 'GET', path, { headers: providerHeaders });
+      release();
+      expect((await older).status).toBe(200);
+      expect(await harness.deps.store.get('mailRetryRuns/vercel')).toMatchObject({ requestId: newer.headers.get('x-request-id'), startedAt: '2026-03-01T15:00:01.000Z', status: 'succeeded' });
+    } finally { release(); await older; delayed.mockRestore(); await harness.close(); }
+  });
+
   it('does not let an older worker overwrite the latest provider run', async () => {
     const harness = await startHarness();
     const original = harness.deps.store.list.bind(harness.deps.store);

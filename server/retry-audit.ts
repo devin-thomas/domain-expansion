@@ -25,7 +25,11 @@ export async function retryWithAudit(
   // Fixed keys retain the latest provider and operator runs without an unbounded log.
   const path = `mailRetryRuns/${source}`;
   const run: RetryRun = { requestId, source, schedule, status: 'running', startedAt: started.toISOString() };
-  await deps.store.transaction(async (tx) => { tx.set(path, run); });
+  await deps.store.transaction(async (tx) => {
+    const current = await tx.get<RetryRun>(path);
+    // A delayed start cannot replace evidence with an earlier start timestamp.
+    if (!current || current.startedAt <= run.startedAt) tx.set(path, run);
+  });
 
   const finish = async (outcome: Pick<RetryRun, 'status' | 'scanned' | 'retried' | 'errorCode'>) => {
     await deps.store.transaction(async (tx) => {

@@ -138,8 +138,8 @@ async function dispatch(req: IncomingMessage & { body?: unknown }, url: URL, dep
     if (!deps.config.notificationRetrySecret || secret !== deps.config.notificationRetrySecret) {
       throw new ApiError(401, 'unauthorized', 'Sign in to continue');
     }
-    const source = method === 'GET' && header(req, 'user-agent') === 'vercel-cron/1.0' ? 'vercel' : 'operator';
-    const schedule = source === 'vercel' && header(req, 'x-vercel-cron-schedule') === '0 12 * * *' ? '0 12 * * *' : null;
+    const source = method === 'GET' && header(req, 'user-agent') === 'vercel-cron/1.0' && header(req, 'x-vercel-cron-schedule') === '0 12 * * *' ? 'vercel' : 'operator';
+    const schedule = source === 'vercel' ? '0 12 * * *' : null;
     return retryWithAudit(deps, requestId, source, schedule);
   }
 
