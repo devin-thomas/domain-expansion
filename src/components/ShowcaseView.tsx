@@ -25,6 +25,6 @@ export const ShowcaseView: React.FC = () => (
 
       <section className="showcase-section privacy-section" id="privacy" aria-labelledby="privacy-title"><div className="privacy-copy"><div className="section-heading compact"><span className="section-number">03</span><h2 id="privacy-title">Your data stays yours</h2></div><p>Each approved member has a private Firestore portfolio. Domain Expansion is not end-to-end encrypted: the application server can read records it stores. Google Drive is an optional, explicit backup, not the database. The showcase uses synthetic examples only.</p><a className="action-primary small" href="/">Request access <span aria-hidden="true">→</span></a></div><dl className="privacy-spec"><div><dt>STORAGE</dt><dd>Private Firestore</dd></div><div><dt>ISOLATION</dt><dd>Per account</dd></div><div><dt>ENCRYPTION</dt><dd>Server-side, not E2E</dd></div></dl></section>
     </main>
-    <footer className="showcase-footer"><span>DOMAIN EXPANSION</span><span>RESPONSIVE PRODUCT SURFACES</span><a href="/">Launch app ↗</a></footer>
+    <footer className="showcase-footer"><span>DOMAIN EXPANSION</span><span>RESPONSIVE PRODUCT SURFACES</span><div className="flex flex-wrap gap-5"><a href="/privacy">Privacy</a><a href="/">Launch app ↗</a></div></footer>
   </div>
 );
