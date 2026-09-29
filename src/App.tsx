@@ -38,6 +38,13 @@ async function loadAllDomains(): Promise<DomainView[]> {
 
 const TEST_AUTH = import.meta.env.VITE_TEST_AUTH === '1';
 
+function mutationFailureMessage(error: unknown, rejected: string, unknownOutcome: string): string {
+  const message = error instanceof Error ? error.message : 'The request failed.';
+  return error instanceof ApiClientError && error.status < 500
+    ? `${message} ${rejected}`
+    : `${message} ${unknownOutcome}`;
+}
+
 export default function App() {
   if (window.location.pathname === '/auth/finish') return <AuthFinish />;
   return <Product />;
@@ -155,10 +162,11 @@ function Product() {
 
   if (!user) return <Gate onTestUser={async () => {
     clearPrivate();
-    const response = await api<{ token: string }>('/api/test/session', { method: 'POST', body: { uid: 'test-user', email: 'tester@example.com', role: 'admin' } });
+    const uid = `test-user-${crypto.randomUUID()}`;
+    const response = await api<{ token: string }>('/api/test/session', { method: 'POST', body: { uid, email: 'tester@example.com', role: 'admin' } });
     setMemoryToken(response.data.token);
-    await load('test-user');
-    setUser({ uid: 'test-user', email: 'tester@example.com', role: 'admin' });
+    await load(uid);
+    setUser({ uid, email: 'tester@example.com', role: 'admin' });
   }} />;
 
   const visible = domains.filter((domain) => {
@@ -487,7 +495,13 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
         await onOpenExisting(error.existingId);
         return;
       }
-      setUnsaved(error instanceof Error ? `${error.message} Unsaved.` : 'Unsaved.');
+      setUnsaved(mutationFailureMessage(
+        error,
+        'Nothing was saved.',
+        initial
+          ? 'The save outcome is unknown. Your edit is still here; reload before retrying.'
+          : 'The save outcome is unknown. Your draft is still here; retrying the unchanged submission is safe.',
+      ));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -503,7 +517,11 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
       dirty.current = false;
       await onSaved('Deleted');
     } catch (error) {
-      setUnsaved(error instanceof Error ? `${error.message} Nothing was deleted.` : 'Nothing was deleted.');
+      setUnsaved(mutationFailureMessage(
+        error,
+        'Nothing was deleted.',
+        'The delete outcome is unknown. Check the portfolio before trying again.',
+      ));
     } finally {
       deletingRef.current = false;
       setDeleting(false);
@@ -700,7 +718,11 @@ function AiCapture({ settings, onSaved, onOpenExisting, onDirty }: { settings: A
         await onOpenExisting(approveError.existingId);
         return;
       }
-      setError(approveError instanceof Error ? `${approveError.message} Nothing was added.` : 'Nothing was added.');
+      setError(mutationFailureMessage(
+        approveError,
+        'Nothing was added.',
+        'The save outcome is unknown. Your review is still here; retrying the unchanged selection is safe.',
+      ));
     } finally {
       approving.current = false;
       setCommitting(false);

@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,6 +22,45 @@ function run(args: string[], env: NodeJS.ProcessEnv, input?: string) {
 }
 
 describe('cli', () => {
+  it.each(['pagination', 'export'] as const)('preserves an existing export when %s fails', async (failure) => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'domain-export-failure-'));
+    const output = path.join(directory, 'backup.json');
+    const existing = '{"previous":"complete backup"}\n';
+    fs.writeFileSync(output, existing);
+    const paths: string[] = [];
+    const server = createServer((request, response) => {
+      const url = new URL(request.url || '/', 'http://localhost');
+      paths.push(`${url.pathname}${url.search}`);
+      response.setHeader('content-type', 'application/json');
+      const failed = failure === 'pagination' ? url.searchParams.has('cursor') : url.pathname === '/api/v1/export';
+      response.statusCode = failed ? 503 : 200;
+      response.end(JSON.stringify(failed
+        ? { error: { message: 'Synthetic export failure' } }
+        : { records: [], nextCursor: failure === 'pagination' ? 'second-page' : null }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new Error('Missing local fixture address');
+      const result = await run(['export', '--format', 'json', '--output', output], {
+        DOMAIN_EXPANSION_API_URL: `http://127.0.0.1:${address.port}`,
+        DOMAIN_EXPANSION_TOKEN: 'synthetic-cli-token',
+        DOMAIN_EXPANSION_CONFIG: path.join(directory, 'missing-config.json'),
+      });
+      expect(result.code).not.toBe(0);
+      expect(result.stdout).toBe('');
+      expect(result.stderr).toContain('Synthetic export failure');
+      expect(fs.readFileSync(output, 'utf8')).toBe(existing);
+      expect(fs.readdirSync(directory)).toEqual(['backup.json']);
+      expect(paths).toHaveLength(2);
+      if (failure === 'pagination') expect(paths[1]).toContain('cursor=second-page');
+      else expect(paths[1]).toContain('/api/v1/export');
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('supports help and version flags without credentials', async () => {
     const env = { DOMAIN_EXPANSION_API_URL: '', DOMAIN_EXPANSION_TOKEN: '', DOMAIN_EXPANSION_CONFIG: path.join(os.tmpdir(), `missing-cli-config-${process.pid}.json`) };
     for (const args of [['--help'], ['list', '--help']]) {

@@ -255,7 +255,7 @@ test('delete submits once while busy and reports a failed deletion', async ({ pa
   await expect.poll(() => deleteRequests).toBe(1);
   await expect(deleteButton).toBeDisabled();
   releaseDelete();
-  await expect(page.getByTestId('save-status')).toContainText('Nothing was deleted');
+  await expect(page.getByTestId('save-status')).toContainText('The delete outcome is unknown');
   expect(deleteRequests).toBe(1);
   await expect(page.getByRole('button', { name: /delete\.example/ }).first()).toBeVisible();
 });
