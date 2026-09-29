@@ -3,7 +3,7 @@ import { MAX_INPUT_BYTES, type DomainRecord, type ReminderConfig, type RenewalIn
 const SCOPES = {
   calendar: 'https://www.googleapis.com/auth/calendar.events',
   tasks: 'https://www.googleapis.com/auth/tasks',
-  sheets: 'https://www.googleapis.com/auth/spreadsheets',
+  sheets: 'https://www.googleapis.com/auth/drive.file',
   driveFile: 'https://www.googleapis.com/auth/drive.file',
 } as const;
 
