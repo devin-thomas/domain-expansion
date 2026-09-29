@@ -1,10 +1,10 @@
 # Domain Expansion release
 
 **State:** healthy — Technical release live; human acceptance deferred
-**Updated:** Sep 29, 2026, 12:36 PM America/Chicago
+**Updated:** Sep 29, 2026, 1:04 PM America/Chicago
 **Task ID:** `domain-expansion-release`
 **Repository:** `devin-thomas/domain-expansion`, branch `main`
-**Application commit:** `bc5601eb4e969a9d8c19f6eada13d8c499629341`
+**Application commit:** `2c1cdc300e768b2379e524e25a99aa11e1857cd4`
 
 ## Action required
 
@@ -13,13 +13,13 @@ Smallest action: None now. Review the deferred checks at final handoff.
 
 ## Current activity
 
-The technical release and private dashboard are live. The three screen-reader fixes pass lint, build, and all 18 browser tests; Chrome's accessibility tree confirms the Gemini key label.
+The technical release and private dashboard are live. CLI purchase-detail writes, spreadsheet text round trips, and Google script-load retry are deployed; API/CLI 77/77, unit 65/65, browser 18/18, lint, and build pass.
 Next checkpoint: At final handoff, revisit the explicitly deferred human and Google provider checks. No immediate user action is needed.
 
 ## Milestones
 
-- **complete — Canonical application and API release.** The accessibility source commit bc5601e has a successful Vercel deployment status and its Gemini key label was observed on the canonical host. All six canonical routes returned HTTP 200 in the preceding production check. Cloudflare Worker f8e55e50-03d0-495f-b9e1-12f5e50feba9 serves the /api proxy.
-- **complete — Backend and production verification.** The eight-group production verifier passed on the recorded release; API/CLI 77/77, unit 63/63, browser 18/18, lint, build, boundary, and native-runtime checks passed. Firestore emulator 8/8 is retained from the prior run.
+- **complete — Canonical application and API release.** Application source 2c1cdc3 is READY as Vercel dpl_3cNRiR9dmDCDuiFuuUaWrexibPq7 and was observed on the canonical alias. All six canonical routes returned HTTP 200. Cloudflare Worker f8e55e50-03d0-495f-b9e1-12f5e50feba9 serves the /api proxy.
+- **complete — Backend and production verification.** The eight-group production verifier passed on the earlier recorded release; current source passes API/CLI 77/77, unit 65/65, browser 18/18, lint, build, boundary, and native-runtime checks. Firestore emulator 8/8 is retained from the prior run.
 - **complete — Desktop/CLI and completed device checks.** Windows and hosted macOS CLI acceptance passed. The user reported iPhone 16 Pro Safari sign-in, capture, and edit success, and Galaxy S21 Ultra Chrome sign-in success.
 - **complete — UI accessibility source fixes.** Gemini key labeling, per-proposal Include labels, and live Google result announcements are committed as bc5601e; lint, build, and browser 18/18 pass. The human screen-reader and browser-zoom walkthroughs remain deferred.
 - **complete — Private release dashboard.** The portable dashboard is tracked in the canonical repository. Its dedicated loopback server and Tailscale Serve endpoint passed matching task-ID and timestamp checks; Chrome rendered the private page.
@@ -59,12 +59,13 @@ Next checkpoint: At final handoff, revisit the explicitly deferred human and Goo
 - 2026-09-29T17:23:31Z: Recorded three screen-reader issues for active source remediation and preserved the user's decision to defer remaining human checks until final handoff.
 - 2026-09-29T17:27:54Z: Committed and pushed accessibility fixes as bc5601e; lint, build, and all 18 browser tests passed.
 - 2026-09-29T17:34:27Z: Verified Tailscale API/device status, local dashboard endpoint, private HTTPS Serve endpoint, and rendered Chrome view. Vercel commit status succeeded; the live settings accessibility tree named the Gemini key field.
+- 2026-09-29T18:04:05Z: Deployed CLI purchase-detail, spreadsheet round-trip, and Google script-retry fixes as application source 2c1cdc3. Local API/CLI 77/77, unit 65/65, browser 18/18, lint/build, hosted macOS CLI, canonical alias, six routes, and both dashboard endpoints were verified.
 
 ## Walk-away snapshot
 
-The earlier six-route production check returned HTTP 200; the current live Chrome session confirmed the deployed app UI and Gemini key label. The dashboard local and private endpoints passed fresh identity and timestamp checks. Unfinished: Google provider and remaining device/accessibility acceptance are deferred by user instruction. Next safe step: At final handoff, review the deferred checks and decide whether to perform the Google provider actions.
-Touched: Accessibility source commit bc5601e is on origin/main. The dashboard folder is tracked; Tailscale Serve points to its dedicated loopback static server. No private host details or secrets are in the repository snapshot. Expected processes: One loopback Python static server and one Tailscale Serve mapping; local runtime metadata records their details. User action: None until final handoff.
+Application source 2c1cdc3 was READY on the canonical Vercel alias and all six routes returned HTTP 200. Local API/CLI 77/77, unit 65/65, browser 18/18, lint/build, and hosted macOS CLI passed. The dashboard local and private endpoints returned the same task identity and timestamp. Unfinished: Google provider and remaining device/accessibility acceptance are deferred by user instruction. Next safe step: At final handoff, review the deferred checks and decide whether to perform the Google provider actions.
+Touched: Application source commits d20a785, d5c2e72, and 2c1cdc3 are on origin/main. The dashboard folder is tracked; Tailscale Serve points to its dedicated loopback static server. No private host details or secrets are in the repository snapshot. Expected processes: One loopback Python static server and one Tailscale Serve mapping; local runtime metadata records their details. User action: None until final handoff.
 
 ## Delivery
 
-Portable repository snapshot and private Tailscale Serve. Tailscale: Host-side private HTTPS endpoint verified with matching dashboard identity and timestamp; the tailnet URL is shared in chat, not committed. Persistence: Dashboard source and state are tracked on main; this update is committed as a checkpoint. Last verified: 2026-09-29T17:36:02Z; local and private HTTPS dashboard endpoints, rendered Chrome view, Vercel commit status, and live Gemini key label. Limitation: Tailnet access depends on this host staying awake and connected. A second-device dashboard visit has not been independently tested.
+Portable repository snapshot and private Tailscale Serve. Tailscale: Host-side private HTTPS endpoint verified with matching dashboard identity and timestamp; the tailnet URL is shared in chat, not committed. Persistence: Dashboard source and state are tracked on main; this update is committed as a checkpoint. Last verified: 2026-09-29T18:04:05Z; local and private HTTPS dashboard endpoints, READY canonical Vercel alias, six live routes, hosted macOS CLI, and current source checks. Limitation: Tailnet access depends on this host staying awake and connected. A second-device dashboard visit has not been independently tested.

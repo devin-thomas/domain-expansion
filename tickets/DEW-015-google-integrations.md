@@ -2,7 +2,9 @@
 
 **Status:** Complete
 
-September 29 update: Calendar now requests `calendar.events.owned`, sufficient for the adapter's primary-calendar list/create operations. The Google integration suite passes 16/16, including four authorization tests that verify each feature requests only its scope with `include_granted_scopes: false`. The latest unit suite passes 63/63; lint, build, browser/server boundary, and compiled runtime checks pass. Real provider acceptance remains pending under DEW-017. See [OAuth verification preparation](../docs/GOOGLE-OAUTH-VERIFICATION.md).
+September 29 follow-up: a failed Google Identity Services script load now clears the cached promise and removes the failed script, so a later integration attempt can retry without reloading the app. Concurrent requests still share one in-flight load. The focused Google integration suite passed 17/17 with a failure-and-retry fixture; real Google consent and provider actions remain pending under DEW-017.
+
+September 29 update: Calendar now requests `calendar.events.owned`, sufficient for the adapter's primary-calendar list/create operations. The Google integration suite passes 17/17, including four authorization tests that verify each feature requests only its scope with `include_granted_scopes: false`. The latest unit suite passes 65/65; lint, build, browser/server boundary, and compiled runtime checks pass. Real provider acceptance remains pending under DEW-017. See [OAuth verification preparation](../docs/GOOGLE-OAUTH-VERIFICATION.md).
 
 ## Goal
 
