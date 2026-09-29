@@ -37,6 +37,7 @@ import {
   userToday,
 } from './portfolio.js';
 import type { DocStore } from './store.js';
+import { retryWithAudit } from './retry-audit.js';
 
 export interface AppDeps {
   store: DocStore;
@@ -99,7 +100,7 @@ export async function handleApi(req: IncomingMessage & { body?: unknown }, res: 
     if (typeof origin === 'string' && !deps.config.allowedOrigins.includes(origin)) {
       throw new ApiError(403, 'forbidden', 'This origin is not allowed');
     }
-    const result = await dispatch(req, url, deps);
+    const result = await dispatch(req, url, deps, requestId);
     send(res, result.status, result.body, requestId, result.etag, result.retryAfter);
     if (background && req.method === 'POST' && ['/api/access/request', '/api/auth/email-link'].includes(url.pathname) && result.status < 300) {
       background(retryDueNotifications(deps.store, deps.config, deps.mail, deps.now()).catch(() => {
@@ -114,7 +115,7 @@ export async function handleApi(req: IncomingMessage & { body?: unknown }, res: 
   }
 }
 
-async function dispatch(req: IncomingMessage & { body?: unknown }, url: URL, deps: AppDeps): Promise<{ status: number; body: unknown; etag?: string; retryAfter?: number }> {
+async function dispatch(req: IncomingMessage & { body?: unknown }, url: URL, deps: AppDeps, requestId: string): Promise<{ status: number; body: unknown; etag?: string; retryAfter?: number }> {
   const method = (req.method || 'GET').toUpperCase();
   const path = url.pathname.replace(/\/$/, '') || '/';
   const now = deps.now();
@@ -132,12 +133,14 @@ async function dispatch(req: IncomingMessage & { body?: unknown }, url: URL, dep
   }
   if (method === 'POST' && path === '/api/test/session') return testSession(req, deps, now);
   if (['POST', 'GET'].includes(method) && path === '/api/internal/notifications/retry') {
-    const header = req.headers.authorization || '';
-    const secret = header.startsWith('Bearer ') ? header.slice(7) : '';
+    const authorization = req.headers.authorization || '';
+    const secret = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
     if (!deps.config.notificationRetrySecret || secret !== deps.config.notificationRetrySecret) {
       throw new ApiError(401, 'unauthorized', 'Sign in to continue');
     }
-    return retryDueNotifications(deps.store, deps.config, deps.mail, now);
+    const source = method === 'GET' && header(req, 'user-agent') === 'vercel-cron/1.0' ? 'vercel' : 'operator';
+    const schedule = source === 'vercel' && header(req, 'x-vercel-cron-schedule') === '0 12 * * *' ? '0 12 * * *' : null;
+    return retryWithAudit(deps, requestId, source, schedule);
   }
 
   const actor = await authenticate(typeof req.headers.authorization === 'string' ? req.headers.authorization : undefined, deps.store, deps.config, now);
