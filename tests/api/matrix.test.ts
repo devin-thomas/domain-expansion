@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { signTestToken } from '../../server/auth';
+import { signTestToken, tokenPath, type TokenDoc } from '../../server/auth';
 import { createLiveMail } from '../../server/adapters';
 import { ROUTE_TABLE } from '../../server/http';
 import { openApiDocument } from '../../shared/openapi';
@@ -35,6 +35,38 @@ describe('api authorization and domain behavior', () => {
     expect((await call(harness.base, admin, 'POST', '/api/admin/members/user-b/suspend', { body: {} })).status).toBe(200);
     expect((await call(harness.base, user, 'GET', '/api/v1/domains')).status).toBe(403);
     await harness.close();
+  });
+
+  it('rejects expired PATs and PATs after their member is suspended', async () => {
+    const harness = await startHarness();
+    try {
+      const expiredMember = await session(harness.base, { uid: 'expired-pat-member', email: 'expired-pat@example.com' });
+      const expiredToken = await call(harness.base, expiredMember, 'POST', '/api/tokens', {
+        body: { name: 'expires-now', scopes: ['domains:read'], expiresInDays: 1 },
+      });
+      expect(expiredToken.status).toBe(201);
+      const expiredPath = tokenPath('expired-pat-member', expiredToken.body.tokenRecord.id as string);
+      await harness.deps.store.transaction(async (tx) => {
+        const current = await tx.get<TokenDoc>(expiredPath);
+        expect(current).not.toBeNull();
+        tx.set(expiredPath, { ...current!, expiresAt: '2026-02-28T14:59:59.999Z' });
+      });
+      const expiredRead = await call(harness.base, expiredToken.body.token as string, 'GET', '/api/v1/domains');
+      expect(expiredRead.status).toBe(401);
+
+      const suspendedMember = await session(harness.base, { uid: 'suspended-pat-member', email: 'suspended-pat@example.com' });
+      const suspendedToken = await call(harness.base, suspendedMember, 'POST', '/api/tokens', {
+        body: { name: 'suspended-member', scopes: ['domains:read'], expiresInDays: 30 },
+      });
+      expect(suspendedToken.status).toBe(201);
+      const admin = await session(harness.base, { uid: 'owner-1', email: 'owner@example.com', role: 'admin' });
+      const suspension = await call(harness.base, admin, 'POST', '/api/admin/members/suspended-pat-member/suspend', { body: {} });
+      expect(suspension.status).toBe(200);
+      const suspendedRead = await call(harness.base, suspendedToken.body.token as string, 'GET', '/api/v1/domains');
+      expect(suspendedRead.status).toBe(403);
+    } finally {
+      await harness.close();
+    }
   });
 
   it('isolates portfolios, revisions, idempotency, and scopes', async () => {
