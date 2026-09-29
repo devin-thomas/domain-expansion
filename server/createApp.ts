@@ -29,7 +29,7 @@ export function createApp(deps: AppDeps, options: { staticDir?: string } = {}) {
   app.disable('x-powered-by');
   app.use(async (req, res, next) => {
     if (!req.path.startsWith('/api')) return next();
-    await handleApi(req, res, deps);
+    await handleApi(req, res, deps, (work) => { void work; });
   });
   if (options.staticDir) {
     app.use(express.static(options.staticDir));

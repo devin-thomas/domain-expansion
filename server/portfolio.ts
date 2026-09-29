@@ -491,7 +491,7 @@ export async function previewImport(store: DocStore, actor: Actor, body: unknown
     acknowledgeCurrencyChanges: parsedBody.acknowledgeCurrencyChanges,
     includeSettings: parsedBody.includeSettings,
     expiresAt: new Date(now.getTime() + PREVIEW_TTL_MS).toISOString(),
-    settings: parsed!.settings,
+    ...(parsed!.settings ? { settings: parsed!.settings } : {}),
     rows,
   };
   await store.transaction(async (tx) => {

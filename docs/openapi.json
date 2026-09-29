@@ -13,6 +13,317 @@
       }
     },
     "schemas": {
+      "DomainInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "registrar": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "dnsProvider": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "ownership": {
+            "type": "string",
+            "enum": [
+              "owned",
+              "managed"
+            ]
+          },
+          "lifecycle": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "transferred"
+            ]
+          },
+          "renewalIntent": {
+            "type": "string",
+            "enum": [
+              "renew",
+              "let_expire"
+            ]
+          },
+          "autoRenew": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "registrationDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "billingDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "expirationDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "registrationCostMinor": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "renewalCostMinor": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "purchaseEmail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^(\\s*|\\s*[^\\s@]+@[^\\s@]+\\.[^\\s@]+\\s*)$",
+            "description": "Optional purchase contact email; blank values become null and surrounding whitespace is trimmed."
+          },
+          "paymentMethod": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000,
+            "description": "Optional user-provided payment method description."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "USD",
+              "GBP",
+              "EUR",
+              "INR",
+              "CNY",
+              "JPY",
+              "CAD"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "reminders": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "enabled",
+              "target",
+              "offsets"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "target": {
+                "type": "string",
+                "enum": [
+                  "default",
+                  "billing",
+                  "expiration"
+                ]
+              },
+              "offsets": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 365
+                }
+              }
+            }
+          }
+        }
+      },
+      "DomainPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "registrar": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "dnsProvider": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "ownership": {
+            "type": "string",
+            "enum": [
+              "owned",
+              "managed"
+            ]
+          },
+          "lifecycle": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "transferred"
+            ]
+          },
+          "renewalIntent": {
+            "type": "string",
+            "enum": [
+              "renew",
+              "let_expire"
+            ]
+          },
+          "autoRenew": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "registrationDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "billingDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "expirationDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "registrationCostMinor": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "renewalCostMinor": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "purchaseEmail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^(\\s*|\\s*[^\\s@]+@[^\\s@]+\\.[^\\s@]+\\s*)$",
+            "description": "Optional purchase contact email; blank values become null and surrounding whitespace is trimmed."
+          },
+          "paymentMethod": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000,
+            "description": "Optional user-provided payment method description."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "USD",
+              "GBP",
+              "EUR",
+              "INR",
+              "CNY",
+              "JPY",
+              "CAD"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "reminders": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "enabled",
+              "target",
+              "offsets"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "target": {
+                "type": "string",
+                "enum": [
+                  "default",
+                  "billing",
+                  "expiration"
+                ]
+              },
+              "offsets": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 365
+                }
+              }
+            }
+          },
+          "clearCostsOnCurrencyChange": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      },
       "Error": {
         "type": "object",
         "required": [
@@ -194,12 +505,46 @@
           }
         ],
         "summary": "Create. Requires domains:write and Idempotency-Key.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DomainInput"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
-            "description": "Created"
+            "description": "Created",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid Idempotency-Key"
           },
           "409": {
             "description": "Duplicate or idempotency conflict"
+          },
+          "422": {
+            "description": "Invalid domain fields"
           }
         }
       }
@@ -212,9 +557,62 @@
           }
         ],
         "summary": "Atomic create of up to 100 records, or 25 when source is ai.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "records"
+                ],
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "manual",
+                      "ai"
+                    ]
+                  },
+                  "records": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "$ref": "#/components/schemas/DomainInput"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Created"
+          },
+          "400": {
+            "description": "Missing or invalid Idempotency-Key"
+          },
+          "409": {
+            "description": "Duplicate domain or idempotency conflict"
+          },
+          "413": {
+            "description": "Batch limit exceeded"
+          },
+          "422": {
+            "description": "Invalid domain fields"
           }
         }
       }
@@ -243,12 +641,43 @@
           }
         ],
         "summary": "Partial update. Requires If-Match.",
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(?:W/)?\"[0-9]+\"$|^[0-9]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DomainPatch"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "Updated"
+            "description": "Updated",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "412": {
             "description": "Stale revision"
+          },
+          "422": {
+            "description": "Invalid domain fields"
           },
           "428": {
             "description": "Missing If-Match"

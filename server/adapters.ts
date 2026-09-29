@@ -1,6 +1,48 @@
 import type { AiPort, IdentityDirectory, MailPort } from './ports';
 import type { Config } from './config';
 
+const MAIL_REQUEST_TIMEOUT_MS = 8_000;
+
+function parseRetryAfter(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    const milliseconds = seconds * 1000;
+    return Number.isFinite(milliseconds) ? milliseconds : undefined;
+  }
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? Math.max(0, timestamp - Date.now()) : undefined;
+}
+
+interface FirebaseUserLookup {
+  getUserByEmail(email: string): Promise<{ uid: string }>;
+  createUser(input: { email: string; emailVerified: false }): Promise<{ uid: string }>;
+}
+
+export async function resolveFirebaseUser(auth: FirebaseUserLookup, email: string): Promise<{ uid: string; emailVerified: false }> {
+  try {
+    const user = await auth.getUserByEmail(email);
+    return { uid: user.uid, emailVerified: false };
+  } catch (error) {
+    const code = typeof error === 'object' && error !== null && 'code' in error
+      ? (error as { code?: unknown }).code
+      : undefined;
+    if (code !== 'auth/user-not-found') throw error;
+    const created = await auth.createUser({ email, emailVerified: false });
+    return { uid: created.uid, emailVerified: false };
+  }
+}
+
+async function fetchWithMailTimeout(input: string | URL, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), MAIL_REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function createMemoryDirectory(): IdentityDirectory & { users: { email: string; uid: string; emailVerified: false }[] } {
   const users: { email: string; uid: string; emailVerified: false }[] = [];
   return {
@@ -20,13 +62,7 @@ export function createAdminDirectory(): IdentityDirectory {
     async resolve(email: string) {
       const admin = await import('firebase-admin');
       if (admin.apps.length === 0) admin.initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID });
-      try {
-        const user = await admin.auth().getUserByEmail(email);
-        return { uid: user.uid, emailVerified: false as const };
-      } catch {
-        const created = await admin.auth().createUser({ email, emailVerified: false });
-        return { uid: created.uid, emailVerified: false as const };
-      }
+      return resolveFirebaseUser(admin.auth(), email);
     },
   };
 }
@@ -40,7 +76,7 @@ export function createLiveMail(config: Config): MailPort {
         return { ok: false, retryable: false, detail: 'Continue URL is not allowlisted' };
       }
       try {
-        const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${encodeURIComponent(config.firebaseWebApiKey)}`, {
+        const response = await fetchWithMailTimeout(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${encodeURIComponent(config.firebaseWebApiKey)}`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ requestType: 'EMAIL_SIGNIN', email, continueUrl, canHandleCodeInApp: true }),
@@ -57,7 +93,7 @@ export function createLiveMail(config: Config): MailPort {
     async sendAdminAlert(input) {
       if (!config.resendApiKey) return { ok: false, retryable: true, detail: 'Resend is not configured' };
       try {
-        const response = await fetch('https://api.resend.com/emails', {
+        const response = await fetchWithMailTimeout('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             authorization: `Bearer ${config.resendApiKey}`,
@@ -125,9 +161,9 @@ export function createGeminiPort(): AiPort {
           },
         );
         if (!response.ok) {
-          const retryAfter = Number(response.headers.get('retry-after') || 0) * 1000;
+          const retryAfter = parseRetryAfter(response.headers.get('retry-after'));
           if (response.status === 401 || response.status === 403) return { ok: false, kind: 'auth', status: response.status };
-          if (response.status === 429) return { ok: false, kind: 'throttle', status: 429, retryAfterMs: retryAfter || undefined };
+          if (response.status === 429) return { ok: false, kind: 'throttle', status: 429, retryAfterMs: retryAfter && retryAfter > 0 ? retryAfter : undefined };
           if (response.status === 402 || response.status === 400) {
             const kind = response.status === 402 ? 'billing' : 'bad';
             return { ok: false, kind, status: response.status };

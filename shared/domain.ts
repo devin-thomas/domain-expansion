@@ -24,6 +24,7 @@ export const DEFAULT_REMINDER_OFFSETS = [30, 14, 7, 1] as const;
 export const MAX_NOTES_BYTES = 8 * 1024;
 export const MAX_NAME_LENGTH = 253;
 export const MAX_TEXT = 200;
+export const MAX_PAYMENT_METHOD_LENGTH = 2000;
 export const MAX_REMINDER_OFFSETS = 16;
 export const PAGE_SIZE_DEFAULT = 50;
 export const PAGE_SIZE_MAX = 100;
@@ -77,6 +78,19 @@ export const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const moneySchema = z.number().int().nonnegative().safe();
+const purchaseEmailSchema = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? null : value),
+  z
+    .string()
+    .trim()
+    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Enter a valid email address')
+    .nullable()
+    .default(null),
+);
+const paymentMethodSchema = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? null : value),
+  z.string().max(MAX_PAYMENT_METHOD_LENGTH).nullable().default(null),
+);
 
 export const publicDomainFields = {
   name: z.string().min(1).max(2000),
@@ -91,6 +105,8 @@ export const publicDomainFields = {
   expirationDate: dateOnly.nullable(),
   registrationCostMinor: moneySchema.nullable(),
   renewalCostMinor: moneySchema.nullable(),
+  purchaseEmail: purchaseEmailSchema,
+  paymentMethod: paymentMethodSchema,
   currency: currencySchema,
   notes: z.string(),
   isArchived: z.boolean(),
@@ -111,6 +127,8 @@ export const createDomainInputSchema = z
     expirationDate: dateOnly.nullable().optional(),
     registrationCostMinor: moneySchema.nullable().optional(),
     renewalCostMinor: moneySchema.nullable().optional(),
+    purchaseEmail: purchaseEmailSchema.optional(),
+    paymentMethod: paymentMethodSchema.optional(),
     currency: currencySchema.optional(),
     notes: z.string().optional(),
     isArchived: z.boolean().optional(),
@@ -134,6 +152,8 @@ export const patchDomainInputSchema = z
     expirationDate: dateOnly.nullable().optional(),
     registrationCostMinor: moneySchema.nullable().optional(),
     renewalCostMinor: moneySchema.nullable().optional(),
+    purchaseEmail: purchaseEmailSchema.optional(),
+    paymentMethod: paymentMethodSchema.optional(),
     currency: currencySchema.optional(),
     notes: z.string().optional(),
     isArchived: z.boolean().optional(),
@@ -179,6 +199,8 @@ export interface DomainRecord {
   expirationDate: string | null;
   registrationCostMinor: number | null;
   renewalCostMinor: number | null;
+  purchaseEmail: string | null;
+  paymentMethod: string | null;
   currency: Currency;
   notes: string;
   isArchived: boolean;
@@ -203,6 +225,8 @@ export interface PublicDomain {
   expirationDate: string | null;
   registrationCostMinor: number | null;
   renewalCostMinor: number | null;
+  purchaseEmail: string | null;
+  paymentMethod: string | null;
   currency: Currency;
   notes: string;
   isArchived: boolean;
@@ -238,6 +262,8 @@ export function toPublicDomain(record: DomainRecord): PublicDomain & { id: strin
     expirationDate: record.expirationDate,
     registrationCostMinor: record.registrationCostMinor,
     renewalCostMinor: record.renewalCostMinor,
+    purchaseEmail: record.purchaseEmail ?? null,
+    paymentMethod: record.paymentMethod ?? null,
     currency: record.currency,
     notes: record.notes,
     isArchived: record.isArchived,
@@ -486,6 +512,8 @@ export function buildRecordFromCreate(input: CreateDomainInput, settings: AppSet
     expirationDate: assertDateOnly(input.expirationDate, 'expirationDate'),
     registrationCostMinor: input.registrationCostMinor ?? null,
     renewalCostMinor: input.renewalCostMinor ?? null,
+    purchaseEmail: input.purchaseEmail?.trim() || null,
+    paymentMethod: input.paymentMethod ?? null,
     currency,
     notes: input.notes ?? '',
     isArchived: input.isArchived ?? false,
@@ -503,6 +531,8 @@ export function buildRecordFromCreate(input: CreateDomainInput, settings: AppSet
 export function applyPatch(current: DomainRecord, patch: PatchDomainInput, nowIso: string): DomainRecord {
   const next: DomainRecord = {
     ...current,
+    purchaseEmail: current.purchaseEmail ?? null,
+    paymentMethod: current.paymentMethod ?? null,
     reminders: { ...current.reminders, offsets: [...current.reminders.offsets] },
     integration: { ...current.integration },
   };
@@ -536,6 +566,8 @@ export function applyPatch(current: DomainRecord, patch: PatchDomainInput, nowIs
   assign('lifecycle');
   assign('renewalIntent');
   assign('autoRenew');
+  assign('paymentMethod');
+  if (patch.purchaseEmail !== undefined) next.purchaseEmail = patch.purchaseEmail?.trim() || null;
   if (patch.registrationDate !== undefined) next.registrationDate = assertDateOnly(patch.registrationDate, 'registrationDate');
   if (patch.billingDate !== undefined) next.billingDate = assertDateOnly(patch.billingDate, 'billingDate');
   if (patch.expirationDate !== undefined) next.expirationDate = assertDateOnly(patch.expirationDate, 'expirationDate');
@@ -568,6 +600,12 @@ export function assertCompleteRecord(record: DomainRecord): void {
     assertNotes(record.notes);
   } catch (error) {
     if (error instanceof DomainInputError) issues.push(...error.issues);
+  }
+  if (!purchaseEmailSchema.safeParse(record.purchaseEmail).success) {
+    issues.push({ path: 'purchaseEmail', message: 'Enter a valid email address' });
+  }
+  if (!paymentMethodSchema.safeParse(record.paymentMethod).success) {
+    issues.push({ path: 'paymentMethod', message: `Payment method description is limited to ${MAX_PAYMENT_METHOD_LENGTH} characters` });
   }
   const reminders = reminderSchema.safeParse(record.reminders);
   if (!reminders.success) {

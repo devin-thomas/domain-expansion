@@ -49,6 +49,8 @@ const PUBLIC_KEYS = [
   'expirationDate',
   'registrationCostMinor',
   'renewalCostMinor',
+  'purchaseEmail',
+  'paymentMethod',
   'currency',
   'notes',
   'isArchived',
@@ -69,6 +71,8 @@ export function publicFieldsOf(record: DomainRecord | PublicDomain): CreateDomai
     expirationDate: record.expirationDate,
     registrationCostMinor: record.registrationCostMinor,
     renewalCostMinor: record.renewalCostMinor,
+    purchaseEmail: record.purchaseEmail ?? null,
+    paymentMethod: record.paymentMethod ?? null,
     currency: record.currency,
     notes: record.notes,
     isArchived: record.isArchived,
@@ -124,6 +128,8 @@ function toCsv(records: DomainRecord[]): string {
     'expirationDate',
     'registrationCostMinor',
     'renewalCostMinor',
+    'purchaseEmail',
+    'paymentMethod',
     'currency',
     'notes',
     'isArchived',
@@ -146,7 +152,7 @@ function csvCell(value: unknown): string {
 function toSql(records: DomainRecord[]): string {
   const lines = [
     '-- Domain Expansion domain-table export. Not a full backup. Do not execute untrusted SQL; this file is data, not a script the app runs.',
-    'CREATE TABLE domains (name TEXT, registrar TEXT, ownership TEXT, lifecycle TEXT, renewal_intent TEXT, expiration_date TEXT, renewal_cost_minor INTEGER, currency TEXT, auto_renew INTEGER, notes TEXT, is_archived INTEGER);',
+    'CREATE TABLE domains (name TEXT, registrar TEXT, ownership TEXT, lifecycle TEXT, renewal_intent TEXT, expiration_date TEXT, renewal_cost_minor INTEGER, currency TEXT, auto_renew INTEGER, notes TEXT, is_archived INTEGER, purchase_email TEXT, payment_method TEXT);',
   ];
   for (const record of records) {
     const values = [
@@ -161,6 +167,8 @@ function toSql(records: DomainRecord[]): string {
       record.autoRenew === null ? null : record.autoRenew ? 1 : 0,
       record.notes,
       record.isArchived ? 1 : 0,
+      record.purchaseEmail,
+      record.paymentMethod,
     ].map(sqlLiteral);
     lines.push(`INSERT INTO domains VALUES (${values.join(', ')});`);
   }
@@ -187,6 +195,8 @@ function toXlsx(records: DomainRecord[], settings?: AppSettings): Uint8Array {
     expirationDate: record.expirationDate,
     registrationCostMinor: record.registrationCostMinor,
     renewalCostMinor: record.renewalCostMinor,
+    purchaseEmail: neutralizeSpreadsheet(record.purchaseEmail),
+    paymentMethod: neutralizeSpreadsheet(record.paymentMethod),
     currency: record.currency,
     notes: neutralizeSpreadsheet(record.notes),
     isArchived: record.isArchived,
@@ -387,6 +397,11 @@ function coerceTabular(row: Record<string, unknown>): CreateDomainInput {
     const text = String(value).trim();
     return text === '' ? null : text.replace(/^'/, '');
   };
+  const nullableFreeText = (value: unknown): string | null => {
+    if (value === null || value === undefined) return null;
+    const text = String(value);
+    return text === '' ? null : text.replace(/^'/, '');
+  };
   const money = (value: unknown): number | null => {
     if (value === null || value === undefined || value === '') return null;
     if (typeof value === 'number') {
@@ -424,6 +439,8 @@ function coerceTabular(row: Record<string, unknown>): CreateDomainInput {
     registrationCostMinor: money(row.registrationCostMinor),
     renewalCostMinor: money(row.renewalCostMinor),
     currency: emptyToUndefined(row.currency),
+    purchaseEmail: nullableText(row.purchaseEmail ?? row.purchase_email),
+    paymentMethod: nullableFreeText(row.paymentMethod ?? row.payment_method),
     notes: nullableText(row.notes) ?? '',
     isArchived: bool(row.isArchived) === true,
   };

@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { credentialAad, open, seal } from '../../server/crypto';
 import { loadConfig } from '../../server/config';
 import { reencryptCredentials } from '../../server/credentials';
-import { createDomain, getDomain } from '../../server/portfolio';
+import { batchCreate, commitImport, createDomain, getDomain, listDomains, previewImport } from '../../server/portfolio';
 import { createFirestoreStore } from '../../server/store';
 import type { Actor } from '../../server/auth';
 
@@ -55,6 +55,73 @@ describe.skipIf(!emulator)('firestore emulator', () => {
     await expect(getDomain(store, actor('admin'), id)).rejects.toMatchObject({ status: 404 });
     const own = await getDomain(store, actor('alice'), id);
     expect(own.status).toBe(200);
+  });
+
+  it('paginates bounded queue reads by document path', async () => {
+    const store = await createFirestoreStore();
+    await store.transaction(async (tx) => {
+      tx.set('queuePaginationTest/a', { value: 1 });
+      tx.set('queuePaginationTest/b', { value: 2 });
+      tx.set('queuePaginationTest/c', { value: 3 });
+    });
+
+    const first = await store.list<{ value: number }>('queuePaginationTest/', { limit: 2 });
+    const second = await store.list<{ value: number }>('queuePaginationTest/', { limit: 2, startAfter: first.at(-1)!.path });
+    expect(first.map((row) => row.path)).toEqual(['queuePaginationTest/a', 'queuePaginationTest/b']);
+    expect(second.map((row) => row.path)).toEqual(['queuePaginationTest/c']);
+
+    await store.transaction(async (tx) => {
+      tx.delete('queuePaginationTest/a');
+      tx.delete('queuePaginationTest/b');
+      tx.delete('queuePaginationTest/c');
+    });
+  });
+
+  it('commits batch and mixed import mutations in Firestore transactions', async () => {
+    const store = await createFirestoreStore();
+    const actor: Actor = {
+      uid: 'import-transaction-user',
+      email: 'import@example.com',
+      emailVerified: true,
+      authTime: 1_800_000_000,
+      role: 'member',
+      authKind: 'session',
+      scopes: ['domains:read', 'domains:write'],
+    };
+    const now = new Date('2026-03-01T00:00:00.000Z');
+    const batch = await batchCreate(store, actor, {
+      records: [
+        { name: 'transaction-existing.example', expirationDate: '2027-01-01', notes: 'Before import' },
+        { name: 'transaction-batch.example', expirationDate: '2027-02-01' },
+      ],
+    }, 'emulator-batch', now.toISOString());
+    expect(batch.status).toBe(201);
+
+    const preview = await previewImport(store, actor, {
+      format: 'json',
+      policy: 'merge',
+      content: JSON.stringify({
+        format: 'domain-expansion-backup',
+        schemaVersion: 2,
+        domains: [
+          { name: 'transaction-existing.example', expirationDate: '2027-01-01', notes: 'After import', purchaseEmail: 'billing@example.com' },
+          { name: 'transaction-import.example', expirationDate: '2027-03-01' },
+        ],
+      }),
+    }, now);
+    const result = await commitImport(store, actor, {
+      previewId: (preview.body as { previewId: string }).previewId,
+      contentHash: (preview.body as { contentHash: string }).contentHash,
+    }, 'emulator-import', now);
+    expect(result.status).toBe(200);
+
+    const listed = await listDomains(store, actor, new URLSearchParams('archived=all'), 'emulator-cursor-secret', '2026-03-01');
+    const records = (listed.body as { records: { name: string; notes: string; purchaseEmail: string | null }[] }).records;
+    expect(records).toHaveLength(3);
+    expect(records.find((row) => row.name === 'transaction-existing.example')).toMatchObject({
+      notes: 'After import',
+      purchaseEmail: 'billing@example.com',
+    });
   });
 
   it('rotates sealed credentials across user documents', async () => {

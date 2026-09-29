@@ -7,12 +7,15 @@ import {
   effectiveBillingDate,
   formatMinor,
   parseMoneyInput,
+  buildRecordFromCreate,
+  parseCreateInput,
   reminderAnchor,
   urgencyFor,
   type AppSettings,
   type Currency,
   type DomainRecord,
   type RenewalIntent,
+  type ReminderConfig,
 } from '../shared/domain';
 import { ApiClientError, api, completeEmailLink, getMemoryToken, linkInLocation, minorToField, rememberSignInEmail, setMemoryToken, signOutSession, storedSignInEmail, watchAuth } from './services/client';
 import { backupToDrive, connectGoogle, createCalendarEvent, createTask, exportSheet, googleConfigured } from './services/googleIntegration';
@@ -50,9 +53,25 @@ function Product() {
   const [notice, setNotice] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [editing, setEditing] = useState<DomainView | null>(null);
+  const captureOpener = useRef<HTMLElement | null>(null);
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const generation = useRef(0);
+
+  function openCapture(initial: DomainView | null, opener: HTMLElement) {
+    captureOpener.current = opener;
+    setEditing(initial);
+    setCaptureOpen(true);
+  }
+
+  function closeCapture() {
+    setCaptureOpen(false);
+    const opener = captureOpener.current;
+    captureOpener.current = null;
+    requestAnimationFrame(() => {
+      if (opener?.isConnected) opener.focus();
+    });
+  }
 
   const clearPrivate = useCallback(() => {
     generation.current += 1;
@@ -169,7 +188,7 @@ function Product() {
             ) : null}
           </nav>
           <div className="flex items-center gap-2">
-            <button className="inline-flex min-h-11 items-center gap-2 rounded-md bg-indigo-600 px-3 text-sm font-medium" data-testid="open-add" onClick={() => { setEditing(null); setCaptureOpen(true); }}>
+            <button className="inline-flex min-h-11 items-center gap-2 rounded-md bg-indigo-600 px-3 text-sm font-medium" data-testid="open-add" onClick={(event) => openCapture(null, event.currentTarget)}>
               <Plus className="h-4 w-4" /> Add domain
             </button>
             <button className="inline-flex min-h-11 items-center gap-2 rounded-md border border-zinc-700 px-3 text-sm" onClick={async () => { clearPrivate(); await signOutSession(); setUser(null); }}>
@@ -180,7 +199,7 @@ function Product() {
       </header>
       {notice ? <p className="mx-auto max-w-7xl px-4 pt-4 text-sm text-amber-300" role="status">{notice}</p> : null}
       <main className="mx-auto max-w-7xl px-4 py-8">
-        {view === 'dashboard' ? <Dashboard summary={summary} onAdd={() => { setEditing(null); setCaptureOpen(true); }} onOpen={(domain) => { setEditing(domain); setCaptureOpen(true); }} /> : null}
+        {view === 'dashboard' ? <Dashboard summary={summary} onAdd={(opener) => openCapture(null, opener)} onOpen={(domain, opener) => openCapture(domain, opener)} /> : null}
         {view === 'domains' ? (
           <section>
             <label className="mb-4 block text-sm text-zinc-300">Search
@@ -190,7 +209,7 @@ function Product() {
             <ul className="divide-y divide-zinc-800 rounded-lg border border-zinc-800">
               {visible.map((domain) => (
                 <li key={domain.id}>
-                  <button className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-zinc-900" onClick={() => { setEditing(domain); setCaptureOpen(true); }}>
+                  <button className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-zinc-900" onClick={(event) => openCapture(domain, event.currentTarget)}>
                     <span>
                       <span className="block font-medium">{domain.name}</span>
                       <span className="block text-xs text-zinc-400">{domain.registrar || 'Registrar unknown'} · {effectiveBillingDate(domain) || 'No date'}</span>
@@ -210,10 +229,10 @@ function Product() {
         <CaptureDialog
           settings={settings}
           initial={editing}
-          onClose={() => setCaptureOpen(false)}
+          onClose={closeCapture}
           onSaved={async (message) => {
             setNotice(message);
-            setCaptureOpen(false);
+            closeCapture();
             try {
               await refresh();
             } catch (error) {
@@ -246,13 +265,13 @@ interface Summary {
   upcoming: DomainView[];
 }
 
-function Dashboard({ summary, onAdd, onOpen }: { summary: Summary | null; onAdd: () => void; onOpen: (domain: DomainView) => void }) {
+function Dashboard({ summary, onAdd, onOpen }: { summary: Summary | null; onAdd: (opener: HTMLElement) => void; onOpen: (domain: DomainView, opener: HTMLElement) => void }) {
   if (!summary || (summary.upcoming.length === 0 && !summary.nextPayment)) {
     return (
       <div className="mx-auto max-w-xl py-16 text-center">
         <h1 className="text-2xl font-semibold">No domains yet.</h1>
         <p className="mt-2 text-sm text-zinc-400">Add the next domain you are tracking. Advanced details can wait.</p>
-        <button className="mt-6 inline-flex min-h-11 items-center rounded-md bg-indigo-600 px-4" data-testid="empty-add" onClick={onAdd}>Add domain</button>
+        <button className="mt-6 inline-flex min-h-11 items-center rounded-md bg-indigo-600 px-4" data-testid="empty-add" onClick={(event) => onAdd(event.currentTarget)}>Add domain</button>
       </div>
     );
   }
@@ -281,7 +300,7 @@ function Dashboard({ summary, onAdd, onOpen }: { summary: Summary | null; onAdd:
         <ul className="divide-y divide-zinc-800 rounded-lg border border-zinc-800">
           {summary.upcoming.slice(0, 6).map((domain) => (
             <li key={domain.id}>
-              <button className="flex w-full justify-between px-4 py-3 text-left" onClick={() => onOpen(domain)}>
+              <button className="flex w-full justify-between px-4 py-3 text-left" onClick={(event) => onOpen(domain, event.currentTarget)}>
                 <span>{domain.name}</span>
                 <span className="text-zinc-400">{effectiveBillingDate(domain)} · {urgencyFor(domain, summary.today)}</span>
               </button>
@@ -389,20 +408,33 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
   const [lifecycle, setLifecycle] = useState(initial?.lifecycle ?? 'active');
   const [autoRenew, setAutoRenew] = useState(initial?.autoRenew === null || initial?.autoRenew === undefined ? '' : initial.autoRenew ? 'true' : 'false');
   const [notes, setNotes] = useState(initial?.notes ?? '');
+  const [purchaseEmail, setPurchaseEmail] = useState(initial?.purchaseEmail ?? '');
+  const [paymentMethod, setPaymentMethod] = useState(initial?.paymentMethod ?? '');
+  const [reminders, setReminders] = useState<ReminderConfig>(initial?.reminders ?? settings.reminders);
+  const [offsets, setOffsets] = useState((initial?.reminders ?? settings.reminders).offsets.join(', '));
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef(false);
+  const advancedUsed = useRef(false);
+  const lastPayload = useRef('');
   const [archived, setArchived] = useState(initial?.isArchived ?? false);
   const [ackCurrency, setAckCurrency] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [deleteName, setDeleteName] = useState('');
   const idempotencyKey = useRef(crypto.randomUUID());
   const firstField = useRef<HTMLInputElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
   const dirty = useRef(false);
 
   useEffect(() => { firstField.current?.focus(); }, [mode]);
-
   function mark() { dirty.current = true; }
 
   async function save(event: React.FormEvent) {
     event.preventDefault();
+    if (savingRef.current || deletingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
     setUnsaved(null);
     try {
       const renewalCostMinor = parseMoneyInput(cost, currency);
@@ -414,7 +446,7 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
         currency,
         renewalIntent: intent,
       };
-      if (advanced) {
+      if (advanced || advancedUsed.current || initial) {
         body.billingDate = billingDate || null;
         body.registrationDate = registrationDate || null;
         body.registrationCostMinor = parseMoneyInput(registrationCost, currency);
@@ -423,13 +455,18 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
         body.lifecycle = lifecycle;
         body.autoRenew = autoRenew === '' ? null : autoRenew === 'true';
         body.notes = notes;
+        body.purchaseEmail = purchaseEmail.trim() || null;
+        body.paymentMethod = paymentMethod || null;
         body.isArchived = archived;
-        body.reminders = initial?.reminders ?? settings.reminders;
+        body.reminders = { ...reminders, offsets: offsets.trim() ? offsets.split(',').map((part) => Number(part.trim())) : [] };
+      }
         if (initial && currency !== initial.currency && (initial.renewalCostMinor !== null || initial.registrationCostMinor !== null)) {
           if (!ackCurrency) throw new ApiClientError(422, 'currency_change_unacknowledged', 'Confirm the currency change before saving.');
           body.clearCostsOnCurrencyChange = true;
         }
-      }
+      const payload = JSON.stringify(body);
+      if (lastPayload.current && lastPayload.current !== payload) idempotencyKey.current = crypto.randomUUID();
+      lastPayload.current = payload;
       if (!initial) {
         await api('/api/v1/domains', { method: 'POST', body, idempotencyKey: idempotencyKey.current });
         dirty.current = false;
@@ -446,46 +483,69 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
         return;
       }
       setUnsaved(error instanceof Error ? `${error.message} Unsaved.` : 'Unsaved.');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   }
 
   async function remove() {
-    if (!initial) return;
-    if (deleteName !== initial.name) return;
+    if (!initial || savingRef.current || deletingRef.current || deleteName !== initial.name) return;
+    deletingRef.current = true;
+    setDeleting(true);
     try {
       await api(`/api/v1/domains/${initial.id}`, { method: 'DELETE', ifMatch: `"${initial.revision}"` });
       dirty.current = false;
       await onSaved('Deleted');
     } catch (error) {
       setUnsaved(error instanceof Error ? `${error.message} Nothing was deleted.` : 'Nothing was deleted.');
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
     }
   }
 
+  function switchMode(next: 'quick' | 'ai') {
+    if (next === mode || savingRef.current || deletingRef.current) return;
+    if (dirty.current && !window.confirm('Switching capture modes will discard the unsaved draft. Continue?')) return;
+    dirty.current = false;
+    setMode(next);
+  }
+
   function requestClose() {
+    if (savingRef.current || deletingRef.current) return;
     if (dirty.current && !window.confirm('Discard the unsaved domain draft?')) return;
     onClose();
   }
 
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-black/70 p-4" onMouseDown={requestClose}>
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-950 p-5" onMouseDown={(event) => event.stopPropagation()}>
+      <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby={titleId} className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-950 p-5" onMouseDown={(event) => event.stopPropagation()} onKeyDown={(event) => {
+        if (event.key === 'Escape') { event.preventDefault(); requestClose(); }
+        if (event.key !== 'Tab') return;
+        const elements: HTMLElement[] = dialog.current ? Array.from(dialog.current.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]')) : [];
+        const controls = elements.filter((element) => element.getClientRects().length > 0);
+        const first = controls[0]; const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }}>
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 id={titleId} className="text-lg font-semibold">{initial ? 'Edit domain' : 'Add domain'}</h2>
           <button className="min-h-11 px-2" onClick={requestClose}>Close</button>
         </div>
         <div className="mb-4 flex gap-2" role="tablist">
-          <button className={`min-h-11 rounded-md px-3 ${mode === 'quick' ? 'bg-zinc-800' : ''}`} data-testid="capture-mode-quick" onClick={() => setMode('quick')}>Quick Add</button>
-          <button className={`min-h-11 rounded-md px-3 ${mode === 'ai' ? 'bg-zinc-800' : ''}`} data-testid="capture-mode-ai" onClick={() => setMode('ai')}>✨ AI Quick Add</button>
+          <button type="button" className={`min-h-11 rounded-md px-3 ${mode === 'quick' ? 'bg-zinc-800' : ''}`} data-testid="capture-mode-quick" onClick={() => switchMode('quick')}>Quick Add</button>
+          <button type="button" className={`min-h-11 rounded-md px-3 ${mode === 'ai' ? 'bg-zinc-800' : ''}`} data-testid="capture-mode-ai" onClick={() => switchMode('ai')}>✨ AI Quick Add</button>
         </div>
-        {mode === 'ai' ? <AiCapture settings={settings} onSaved={onSaved} onOpenExisting={onOpenExisting} /> : (
+        {mode === 'ai' ? <AiCapture settings={settings} onSaved={onSaved} onOpenExisting={onOpenExisting} onDirty={mark} /> : (
           <form className="grid gap-3" onSubmit={save}>
             <Field label="Domain"><input ref={firstField} className="field" data-testid="quick-add-domain" required value={name} onChange={(event) => { mark(); setName(event.target.value); }} /></Field>
             <Field label="Registrar"><input className="field" data-testid="quick-add-registrar" value={registrar} onChange={(event) => { mark(); setRegistrar(event.target.value); }} placeholder="Optional" /></Field>
-            <Field label="Renewal date"><input className="field" data-testid="quick-add-date" type="date" required value={renewalDate} onChange={(event) => { mark(); setRenewalDate(event.target.value); }} /></Field>
+            <Field label={initial ? 'Expiration date' : 'Renewal date'}><input className="field" data-testid="quick-add-date" type="date" required={!billingDate} value={renewalDate} onChange={(event) => { mark(); setRenewalDate(event.target.value); }} /></Field>
             <div className="grid grid-cols-[1fr_8rem] gap-2">
               <Field label="Renewal cost"><input className="field" data-testid="quick-add-cost" inputMode="decimal" value={cost} onChange={(event) => { mark(); setCost(event.target.value); }} placeholder="Unknown if blank" /></Field>
               <Field label="Currency">
-                <select className="field" data-testid="quick-add-currency" value={currency} onChange={(event) => { mark(); setCurrency(event.target.value as Currency); }}>
+                <select className="field" data-testid="quick-add-currency" value={currency} onChange={(event) => { mark(); setCurrency(event.target.value as Currency); setCost(''); setRegistrationCost(''); setAckCurrency(false); }}>
                   {CURRENCIES.map((item) => <option key={item}>{item}</option>)}
                 </select>
               </Field>
@@ -496,13 +556,13 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
                 <option value="let_expire">Let expire</option>
               </select>
             </Field>
-            <button type="button" className="min-h-11 text-left text-sm text-indigo-300" data-testid="more-details" aria-expanded={advanced} onClick={() => setAdvanced((value) => !value)}>
+            <button type="button" className="min-h-11 text-left text-sm text-indigo-300" data-testid="more-details" aria-expanded={advanced} onClick={() => { if (!advanced) advancedUsed.current = true; setAdvanced((value) => !value); }}>
               {advanced ? 'Hide details' : 'More details'}
             </button>
             {advanced ? (
               <div data-testid="advanced-panel" className="grid gap-3 border-t border-zinc-800 pt-3">
                 <h3 className="text-sm text-zinc-400">Dates and costs</h3>
-                <Field label="Billing date"><input className="field" type="date" value={billingDate} onChange={(event) => { mark(); setBillingDate(event.target.value); }} /></Field>
+                <Field label="Billing date"><input className="field" data-testid="billing-date" type="date" value={billingDate} onChange={(event) => { mark(); setBillingDate(event.target.value); }} /></Field>
                 <Field label="Registration date"><input className="field" type="date" value={registrationDate} onChange={(event) => { mark(); setRegistrationDate(event.target.value); }} /></Field>
                 <Field label="Registration cost"><input className="field" value={registrationCost} onChange={(event) => { mark(); setRegistrationCost(event.target.value); }} /></Field>
                 <h3 className="text-sm text-zinc-400">Relationship and state</h3>
@@ -512,24 +572,28 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
                 <h3 className="text-sm text-zinc-400">Providers and notes</h3>
                 <Field label="DNS provider"><input className="field" value={dnsProvider} onChange={(event) => { mark(); setDnsProvider(event.target.value); }} /></Field>
                 <Field label="Notes"><textarea className="field min-h-24" value={notes} onChange={(event) => { mark(); setNotes(event.target.value); }} /></Field>
+                <h3 className="text-sm text-zinc-400">Payment details, optional</h3>
+                <Field label="Purchase email"><input className="field" type="email" maxLength={254} data-testid="purchase-email" value={purchaseEmail} onChange={(event) => { mark(); setPurchaseEmail(event.target.value); }} /></Field>
+                <Field label="Payment method"><textarea className="field min-h-20" maxLength={2000} data-testid="payment-method" value={paymentMethod} onChange={(event) => { mark(); setPaymentMethod(event.target.value); }} placeholder="Describe the method used" /></Field>
                 <h3 className="text-sm text-zinc-400">Reminders</h3>
-                <p className="text-xs text-zinc-500">Default offsets { (initial?.reminders ?? settings.reminders ?? DEFAULT_REMINDERS).offsets.join(', ') } days. This is an in-app cue, not a background notification.</p>
-                {initial && currency !== initial.currency ? <label className="text-sm text-amber-200"><input type="checkbox" checked={ackCurrency} onChange={(event) => setAckCurrency(event.target.checked)} /> Changing currency clears the stored amounts.</label> : null}
+                <ReminderFields value={reminders} onChange={(value) => { mark(); setReminders(value); }} offsets={offsets} onOffsets={(value) => { mark(); setOffsets(value); }} />
+                <p className="text-xs text-zinc-500">In-app urgency is shown when enabled. External notifications require a deliberate Calendar or Tasks action.</p>
                 {initial ? <label className="text-sm"><input type="checkbox" checked={archived} onChange={(event) => { mark(); setArchived(event.target.checked); }} /> Archived</label> : null}
               </div>
             ) : null}
+            {initial && currency !== initial.currency && (initial.renewalCostMinor !== null || initial.registrationCostMinor !== null) ? <label className="text-sm text-amber-200"><input type="checkbox" checked={ackCurrency} onChange={(event) => setAckCurrency(event.target.checked)} /> Changing currency clears the stored amounts. Any costs entered now use the new currency.</label> : null}
             {unsaved ? <p role="alert" data-testid="save-status" className="text-sm text-rose-300">{unsaved}</p> : null}
-            <button className="min-h-11 rounded-md bg-indigo-600" data-testid="quick-add-save" type="submit">Save</button>
+            <button className="min-h-11 rounded-md bg-indigo-600 disabled:opacity-50" data-testid="quick-add-save" type="submit" disabled={saving || deleting}>{saving ? 'Saving…' : deleting ? 'Deleting…' : 'Save'}</button>
             {initial ? (
               <div className="mt-4 border-t border-rose-900/60 pt-4">
-                <button type="button" className="text-sm text-rose-300" onClick={() => setDeleteArmed((value) => !value)}>Permanently delete {initial.name}</button>
+                <button type="button" className="text-sm text-rose-300" disabled={saving || deleting} onClick={() => setDeleteArmed((value) => !value)}>Permanently delete {initial.name}</button>
                 {deleteArmed ? (
                   <div className="mt-2 grid gap-2">
                     <p className="text-sm text-rose-200">This cannot be undone. Calendar events and tasks are left in place.</p>
                     <label>Type {initial.name} to confirm<input className="field" value={deleteName} onChange={(event) => setDeleteName(event.target.value)} /></label>
                     <div className="flex gap-2">
-                      <button type="button" className="min-h-11 rounded-md bg-rose-700 px-3" onClick={() => void remove()}>Delete forever</button>
-                      <button type="button" className="min-h-11 rounded-md border border-zinc-700 px-3" onClick={() => { setDeleteArmed(false); setDeleteName(''); }}>Cancel</button>
+                      <button type="button" className="min-h-11 rounded-md bg-rose-700 px-3 disabled:opacity-50" data-testid="delete-submit" disabled={deleteName !== initial.name || saving || deleting} onClick={() => void remove()}>{deleting ? 'Deleting…' : 'Delete forever'}</button>
+                      <button type="button" className="min-h-11 rounded-md border border-zinc-700 px-3" disabled={deleting} onClick={() => { setDeleteArmed(false); setDeleteName(''); }}>Cancel</button>
                     </div>
                   </div>
                 ) : null}
@@ -544,6 +608,14 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="text-sm text-zinc-300">{label}{children}</label>;
+}
+
+function ReminderFields({ value, onChange, offsets, onOffsets }: { value: ReminderConfig; onChange: (value: ReminderConfig) => void; offsets: string; onOffsets: (value: string) => void }) {
+  return <>
+    <label className="text-sm"><input type="checkbox" checked={value.enabled} onChange={(event) => onChange({ ...value, enabled: event.target.checked })} /> Reminders enabled</label>
+    <Field label="Reminder target"><select className="field" data-testid="reminder-target" value={value.target} onChange={(event) => onChange({ ...value, target: event.target.value as ReminderConfig['target'] })}><option value="default">Follow renewal intention</option><option value="billing">Billing</option><option value="expiration">Expiration</option></select></Field>
+    <Field label="Reminder days before"><input className="field" data-testid="reminder-offsets" value={offsets} onChange={(event) => onOffsets(event.target.value)} placeholder="30, 14, 7, 1" /></Field>
+  </>;
 }
 
 interface ClientDraft {
@@ -561,14 +633,24 @@ interface ClientDraft {
   costInput?: string;
 }
 
-function AiCapture({ settings, onSaved, onOpenExisting }: { settings: AppSettings; onSaved: (message: string) => Promise<void>; onOpenExisting: (id: string) => Promise<void> }) {
+function AiCapture({ settings, onSaved, onOpenExisting, onDirty }: { settings: AppSettings; onSaved: (message: string) => Promise<void>; onOpenExisting: (id: string) => Promise<void>; onDirty: () => void }) {
   const [text, setText] = useState('');
   const [drafts, setDrafts] = useState<ClientDraft[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const requestGen = useRef(0);
   const idempotencyKey = useRef(crypto.randomUUID());
-  const selected = drafts.filter((draft) => !draft.excluded && draft.name && (draft.expirationDate || draft.billingDate));
+  const approving = useRef(false);
+  const [committing, setCommitting] = useState(false);
+  const lastPayload = useRef('');
+  useEffect(() => () => { requestGen.current += 1; }, []);
+  function draftInput(draft: ClientDraft) {
+    return { name: draft.name, registrar: draft.registrar, expirationDate: draft.expirationDate, billingDate: draft.billingDate, renewalCostMinor: draft.costInput === undefined ? draft.renewalCostMinor : parseMoneyInput(draft.costInput, (draft.currency ?? draft.suggestedCurrency ?? settings.defaultCurrency) as Currency), currency: draft.currency ?? draft.suggestedCurrency ?? settings.defaultCurrency, renewalIntent: draft.renewalIntent ?? 'renew' };
+  }
+  const selected = drafts.filter((draft) => {
+    if (draft.excluded) return false;
+    try { buildRecordFromCreate(parseCreateInput(draftInput(draft)), settings, 'draft', new Date().toISOString()); return true; } catch { return false; }
+  });
   function editDraft(index: number, patch: Partial<ClientDraft>) {
     setDrafts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
   }
@@ -590,23 +672,19 @@ function AiCapture({ settings, onSaved, onOpenExisting }: { settings: AppSetting
   }
 
   async function approve() {
+    if (approving.current || !selected.length) return;
+    approving.current = true;
+    setCommitting(true);
     setError(null);
     try {
+      const body = { source: 'ai', records: selected.map(draftInput) };
+      const payload = JSON.stringify(body);
+      if (lastPayload.current && lastPayload.current !== payload) idempotencyKey.current = crypto.randomUUID();
+      lastPayload.current = payload;
       await api('/api/v1/domains/batch', {
         method: 'POST',
         idempotencyKey: idempotencyKey.current,
-        body: {
-          source: 'ai',
-          records: selected.map((draft) => ({
-            name: draft.name,
-            registrar: draft.registrar,
-            expirationDate: draft.expirationDate,
-            billingDate: draft.billingDate,
-            renewalCostMinor: draft.costInput === undefined ? draft.renewalCostMinor : parseMoneyInput(draft.costInput, (draft.currency ?? draft.suggestedCurrency ?? settings.defaultCurrency) as Currency),
-            currency: draft.currency ?? draft.suggestedCurrency ?? settings.defaultCurrency,
-            renewalIntent: draft.renewalIntent ?? 'renew',
-          })),
-        },
+        body,
       });
       setDrafts([]);
       setText('');
@@ -618,11 +696,14 @@ function AiCapture({ settings, onSaved, onOpenExisting }: { settings: AppSetting
         return;
       }
       setError(approveError instanceof Error ? `${approveError.message} Nothing was added.` : 'Nothing was added.');
+    } finally {
+      approving.current = false;
+      setCommitting(false);
     }
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-3" onChange={onDirty}>
       <form onSubmit={extract} className="grid gap-2">
         <label className="text-sm">Describe one or more domains
           <textarea className="field min-h-24" data-testid="ai-input" value={text} onChange={(event) => setText(event.target.value)} />
@@ -648,7 +729,7 @@ function AiCapture({ settings, onSaved, onOpenExisting }: { settings: AppSetting
         </article>
       ))}
       {error ? <p role="alert" className="text-sm text-rose-300">{error}</p> : null}
-      {drafts.length ? <button className="min-h-11 rounded-md bg-indigo-600" data-testid="ai-add-selected" disabled={!selected.length} onClick={() => void approve()}>Add selected ({selected.length})</button> : null}
+      {drafts.length ? <button className="min-h-11 rounded-md bg-indigo-600" data-testid="ai-add-selected" disabled={!selected.length || committing} onClick={() => void approve()}>{committing ? 'Adding…' : selected.length < drafts.filter((draft) => !draft.excluded).length ? `Add valid (${selected.length})` : `Add selected (${selected.length})`}</button> : null}
     </div>
   );
 }
@@ -656,6 +737,8 @@ function AiCapture({ settings, onSaved, onOpenExisting }: { settings: AppSetting
 function Settings({ settings, domains, onChanged }: { settings: AppSettings; domains: DomainView[]; onChanged: () => Promise<void> }) {
   const [currency, setCurrency] = useState(settings.defaultCurrency);
   const [timezone, setTimezone] = useState(settings.timezone);
+  const [reminders, setReminders] = useState(settings.reminders);
+  const [offsets, setOffsets] = useState(settings.reminders.offsets.join(', '));
   const [key, setKey] = useState('');
   const [consent, setConsent] = useState(false);
   const [tokenName, setTokenName] = useState('Automation');
@@ -681,7 +764,7 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
   async function saveSettings(event: React.FormEvent) {
     event.preventDefault();
     try {
-      await api('/api/v1/settings', { method: 'PUT', body: { ...settings, defaultCurrency: currency, timezone } });
+      await api('/api/v1/settings', { method: 'PUT', body: { ...settings, defaultCurrency: currency, timezone, reminders: { ...reminders, offsets: offsets.trim() ? offsets.split(',').map((part) => Number(part.trim())) : [] } } });
       setMessage('Settings saved');
       await onChanged();
     } catch (error) {
@@ -783,6 +866,7 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
         <h2 className="text-lg font-semibold">Defaults</h2>
         <Field label="Currency"><select className="field" value={currency} onChange={(event) => setCurrency(event.target.value as Currency)}>{CURRENCIES.map((item) => <option key={item}>{item}</option>)}</select></Field>
         <Field label="Time zone"><input className="field" value={timezone} onChange={(event) => setTimezone(event.target.value)} /></Field>
+        <ReminderFields value={reminders} onChange={setReminders} offsets={offsets} onOffsets={setOffsets} />
         <button className="min-h-11 rounded-md bg-indigo-600" type="submit">Save defaults</button>
       </form>
       <form className="grid gap-3" onSubmit={saveKey}>

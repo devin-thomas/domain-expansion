@@ -62,6 +62,7 @@ export const ROUTE_TABLE = [
   'POST /api/admin/members/:uid/reinstate',
   'POST /api/admin/notifications/:id/retry',
   'POST /api/internal/notifications/retry',
+  'GET /api/internal/notifications/retry',
   'GET /api/v1/domains',
   'POST /api/v1/domains',
   'POST /api/v1/domains/batch',
@@ -86,7 +87,7 @@ export const ROUTE_TABLE = [
 
 const MAX_BODY = 2 * 1024 * 1024;
 
-export async function handleApi(req: IncomingMessage & { body?: unknown }, res: ServerResponse, deps: AppDeps): Promise<void> {
+export async function handleApi(req: IncomingMessage & { body?: unknown }, res: ServerResponse, deps: AppDeps, background?: (work: Promise<unknown>) => void): Promise<void> {
   const requestId = randomUUID();
   try {
     const url = new URL(req.url || '/', 'http://localhost');
@@ -99,6 +100,11 @@ export async function handleApi(req: IncomingMessage & { body?: unknown }, res: 
     }
     const result = await dispatch(req, url, deps);
     send(res, result.status, result.body, requestId, result.etag, result.retryAfter);
+    if (background && req.method === 'POST' && ['/api/access/request', '/api/auth/email-link'].includes(url.pathname) && result.status < 300) {
+      background(retryDueNotifications(deps.store, deps.config, deps.mail, deps.now()).catch(() => {
+        deps.log('error', 'admission worker failed', { requestId });
+      }));
+    }
   } catch (error) {
     const api = error instanceof ApiError ? error : new ApiError(500, 'internal', 'Something went wrong');
     if (!(error instanceof ApiError)) deps.log('error', 'request failed', { requestId, name: error instanceof Error ? error.name : 'error' });
@@ -124,7 +130,7 @@ async function dispatch(req: IncomingMessage & { body?: unknown }, url: URL, dep
     return requestSignInLink(deps.store, deps.config, deps.mail, body, clientIp(req), now);
   }
   if (method === 'POST' && path === '/api/test/session') return testSession(req, deps, now);
-  if (method === 'POST' && path === '/api/internal/notifications/retry') {
+  if (['POST', 'GET'].includes(method) && path === '/api/internal/notifications/retry') {
     const header = req.headers.authorization || '';
     const secret = header.startsWith('Bearer ') ? header.slice(7) : '';
     if (!deps.config.notificationRetrySecret || secret !== deps.config.notificationRetrySecret) {

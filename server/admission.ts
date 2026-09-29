@@ -24,12 +24,30 @@ interface NotificationDoc {
   id: string;
   requestId: string;
   emailHash: string;
-  status: 'pending' | 'accepted' | 'failed';
+  status: 'pending' | 'sending' | 'accepted' | 'failed' | 'suppressed';
   attempts: number;
+  retryable: boolean;
   lastError: string | null;
   createdAt: string;
   updatedAt: string;
+  nextAttemptAt: string | null;
+  leaseUntil: string | null;
+  leaseToken: string | null;
+  shouldNotify?: boolean;
   idempotencyKey: string;
+}
+
+interface SignInMailDoc {
+  email: string | null;
+  status: 'pending' | 'sending' | 'sent' | 'failed' | 'suppressed';
+  attempts: number;
+  retryable: boolean;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+  nextAttemptAt: string | null;
+  leaseUntil: string | null;
+  leaseToken: string | null;
 }
 
 interface RateDoc {
@@ -39,6 +57,11 @@ interface RateDoc {
 
 const GENERIC = 'If this email can be processed, the administrator will see the request.';
 const SIGNIN_GENERIC = 'If this email is approved, a sign-in link is on its way.';
+const MAX_RETRY_ATTEMPTS = 5;
+const MAX_RETRY_JOBS = 8;
+const MAX_RETRY_SCAN_PER_QUEUE = 64;
+const RETRY_LEASE_MS = 60_000;
+const RETRY_WORKER_BUDGET_MS = 40_000;
 
 function emailHash(email: string): string {
   return sha256Hex(email);
@@ -78,7 +101,7 @@ async function consume(store: DocStore, key: string, limit: number, windowMs: nu
   });
 }
 
-export async function submitAccessRequest(store: DocStore, config: Config, mail: MailPort, body: unknown, ip: string, now: Date): Promise<{ status: number; body: unknown }> {
+export async function submitAccessRequest(store: DocStore, _config: Config, _mail: MailPort, body: unknown, ip: string, now: Date): Promise<{ status: number; body: unknown }> {
   const email = assertEmail((body as { email?: unknown })?.email);
   const reason = assertReason((body as { reason?: unknown })?.reason);
   await consume(store, `access-ip:${ip}`, 5, 60 * 60 * 1000, now.getTime());
@@ -86,12 +109,12 @@ export async function submitAccessRequest(store: DocStore, config: Config, mail:
   const created = await store.transaction(async (tx) => {
     const index = await tx.get<{ requestId: string }>(`accessRequestIndex/${hash}`);
     const existing = index ? await tx.get<AccessRequest>(`accessRequests/${index.requestId}`) : null;
-    if (existing && (existing.status === 'pending' || existing.status === 'approved')) {
-      return { request: existing, notify: false as const };
-    }
     const recent = await tx.get<{ at: number }>(`notificationWindows/${hash}`);
-    const notify = !recent || now.getTime() - recent.at >= 24 * 60 * 60 * 1000;
-    const request: AccessRequest = existing
+    const eligible = !existing || existing.status === 'denied';
+    const shouldNotify = eligible && (!recent || now.getTime() - recent.at >= 24 * 60 * 60 * 1000);
+    const request: AccessRequest = existing && !eligible
+      ? existing
+      : existing
       ? { ...existing, status: 'pending', reason, updatedAt: now.toISOString(), decidedAt: null, decidedBy: null, mailState: 'idle', mailError: null }
       : {
           id: randomId('req'),
@@ -108,40 +131,51 @@ export async function submitAccessRequest(store: DocStore, config: Config, mail:
         };
     tx.set(`accessRequests/${request.id}`, request);
     tx.set(`accessRequestIndex/${hash}`, { requestId: request.id });
-    if (!notify) return { request, notify: false as const };
     const notification: NotificationDoc = {
       id: randomId('note'),
       requestId: request.id,
       emailHash: hash,
       status: 'pending',
       attempts: 0,
+      retryable: true,
       lastError: null,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
-      idempotencyKey: `access-request:${request.id}:notify`,
+      nextAttemptAt: now.toISOString(),
+      leaseUntil: null,
+      leaseToken: null,
+      shouldNotify,
+      idempotencyKey: `access-request:${request.id}:${randomId('delivery')}:notify`,
     };
     tx.set(`notifications/${notification.id}`, notification);
-    tx.set(`notificationWindows/${hash}`, { at: now.getTime() });
-    return { request, notify: true as const, notification };
+    if (shouldNotify) tx.set(`notificationWindows/${hash}`, { at: now.getTime() });
+    return { request, notification };
   });
-  if (created.notify && created.notification) await deliverNotification(store, config, mail, created.notification.id, now);
   return { status: 202, body: { ok: true, message: GENERIC } };
 }
 
-export async function requestSignInLink(store: DocStore, config: Config, mail: MailPort, body: unknown, ip: string, now: Date): Promise<{ status: number; body: unknown }> {
+export async function requestSignInLink(store: DocStore, _config: Config, _mail: MailPort, body: unknown, ip: string, now: Date): Promise<{ status: number; body: unknown }> {
   const email = assertEmail((body as { email?: unknown })?.email);
   await consume(store, `signin-ip:${ip}`, 5, 60 * 60 * 1000, now.getTime());
   await consume(store, `signin-email:${emailHash(email)}`, 1, 60 * 1000, now.getTime());
-  const index = await store.get<{ uid: string }>(`memberEmails/${emailHash(email)}`);
-  const member = index ? await store.get<MemberDoc>(memberPath(index.uid)) : null;
-  if (member?.status === 'approved') {
-    const result = await mail.sendSignIn(email, config.authContinueUrl);
-    if (!result.ok) {
-      await store.transaction(async (tx) => {
-        tx.set(`signInMail/${emailHash(email)}`, { status: 'failed', retryable: result.retryable, updatedAt: now.toISOString() });
-      });
-    }
-  }
+  const path = `signInMail/${emailHash(email)}`;
+  await store.transaction(async (tx) => {
+    const current = await tx.get<SignInMailDoc>(path);
+    const activeLease = current?.status === 'sending' && current.leaseUntil && Date.parse(current.leaseUntil) > now.getTime();
+    if (activeLease) return;
+    tx.set(path, {
+      email,
+      status: 'pending',
+      attempts: 0,
+      retryable: true,
+      lastError: null,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      nextAttemptAt: now.toISOString(),
+      leaseUntil: null,
+      leaseToken: null,
+    } satisfies SignInMailDoc);
+  });
   return { status: 202, body: { ok: true, message: SIGNIN_GENERIC } };
 }
 
@@ -149,14 +183,22 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
 }
 
-export async function deliverNotification(store: DocStore, config: Config, mail: MailPort, id: string, now: Date): Promise<void> {
-  const current = await store.get<NotificationDoc>(`notifications/${id}`);
-  if (!current || current.status === 'accepted') return;
+export async function deliverNotification(store: DocStore, config: Config, mail: MailPort, id: string, now: Date, force = false): Promise<boolean> {
+  const claim = await claimNotification(store, id, now, force);
+  if (!claim) return false;
+  const { doc: current, leaseToken } = claim;
+  if (current.shouldNotify === false) {
+    await finishNotification(store, id, leaseToken, 'suppressed', false, null, now);
+    return true;
+  }
   const request = await store.get<AccessRequest>(`accessRequests/${current.requestId}`);
-  if (!request) return;
+  if (!request) {
+    await finishNotification(store, id, leaseToken, 'failed', false, 'Access request is missing', now);
+    return true;
+  }
   if (!config.resendApiKey || !config.resendFrom || !config.adminNotificationEmail) {
-    await markNotification(store, current, 'failed', 'Admin notification mail is not configured', now);
-    return;
+    await finishNotification(store, id, leaseToken, 'failed', false, 'Admin notification mail is not configured', now);
+    return true;
   }
   const safeReason = escapeHtml(request.reason || 'No reason provided');
   const link = `${config.appOrigin}/admin`;
@@ -168,19 +210,48 @@ export async function deliverNotification(store: DocStore, config: Config, mail:
     text: `An unverified access request arrived for ${request.email}. Reason: ${request.reason || 'none'}. Review it at ${link}. This message cannot approve the request.`,
     html: `<p>An unverified access request arrived.</p><p>Email: ${escapeHtml(request.email)}</p><p>Reason (unverified): ${safeReason}</p><p><a href="${escapeHtml(link)}">Open the admin queue</a></p><p>This message cannot approve the request.</p>`,
   });
-  await markNotification(store, current, result.ok ? 'accepted' : 'failed', result.ok ? null : result.detail || 'delivery failed', now);
+  await finishNotification(store, id, leaseToken, result.ok ? 'accepted' : 'failed', result.retryable, result.ok ? null : result.detail || 'delivery failed', now);
+  return true;
 }
 
-async function markNotification(store: DocStore, current: NotificationDoc, status: NotificationDoc['status'], error: string | null, now: Date) {
+async function claimNotification(store: DocStore, id: string, now: Date, force = false): Promise<{ doc: NotificationDoc; leaseToken: string } | null> {
+  const leaseToken = randomId('lease');
+  return store.transaction(async (tx) => {
+    const path = `notifications/${id}`;
+    const current = await tx.get<NotificationDoc>(path);
+    if (!current || current.status === 'accepted' || current.status === 'suppressed') return null;
+    const locked = current.status === 'sending' && current.leaseUntil && Date.parse(current.leaseUntil) > now.getTime();
+    if (locked) return null;
+    if (!force && (current.attempts >= MAX_RETRY_ATTEMPTS || current.retryable === false || (current.nextAttemptAt && Date.parse(current.nextAttemptAt) > now.getTime()))) return null;
+    const claimed = {
+      ...current,
+      status: 'sending' as const,
+      attempts: current.attempts + 1,
+      updatedAt: now.toISOString(),
+      leaseUntil: new Date(now.getTime() + RETRY_LEASE_MS).toISOString(),
+      leaseToken,
+    };
+    tx.set(path, claimed);
+    return { doc: claimed, leaseToken };
+  });
+}
+
+async function finishNotification(store: DocStore, id: string, leaseToken: string, status: NotificationDoc['status'], retryable: boolean, error: string | null, now: Date): Promise<void> {
   await store.transaction(async (tx) => {
-    const latest = await tx.get<NotificationDoc>(`notifications/${current.id}`);
-    if (!latest) return;
-    tx.set(`notifications/${current.id}`, {
+    const path = `notifications/${id}`;
+    const latest = await tx.get<NotificationDoc>(path);
+    if (!latest || latest.leaseToken !== leaseToken) return;
+    const retry = status === 'failed' && retryable && latest.attempts < MAX_RETRY_ATTEMPTS;
+    const delayMs = Math.min(60_000 * 2 ** Math.max(0, latest.attempts - 1), 15 * 60_000);
+    tx.set(path, {
       ...latest,
       status,
-      attempts: latest.attempts + 1,
+      retryable: retry,
       lastError: error,
       updatedAt: now.toISOString(),
+      nextAttemptAt: retry ? new Date(now.getTime() + delayMs).toISOString() : null,
+      leaseUntil: null,
+      leaseToken: null,
     });
   });
 }
@@ -236,11 +307,15 @@ export async function decideRequest(
     return { status: 200, body: { status: 'denied' } };
   }
   if (existing.status === 'denied') throw new ApiError(409, 'already_decided', 'This request was denied');
+  if (existing.status === 'approved') {
+    return { status: 200, body: { status: 'approved', mailState: existing.mailState, emailVerified: false } };
+  }
   const identity = existing.uid ? { uid: existing.uid, emailVerified: false as const } : await directory.resolve(existing.email);
-  await store.transaction(async (tx) => {
+  const approval = await store.transaction(async (tx) => {
     const current = await tx.get<AccessRequest>(`accessRequests/${id}`);
     if (!current) throw new ApiError(404, 'not_found', 'Not found');
     if (current.status === 'denied') throw new ApiError(409, 'already_decided', 'This request was denied');
+    if (current.status === 'approved') return { firstApproval: false, mailState: current.mailState };
     const member = await tx.get<MemberDoc>(memberPath(identity.uid));
     tx.set(memberPath(identity.uid), {
       status: 'approved',
@@ -259,7 +334,11 @@ export async function decideRequest(
       mailState: 'pending',
       mailError: null,
     });
+    return { firstApproval: true, mailState: 'pending' as const };
   });
+  if (!approval.firstApproval) {
+    return { status: 200, body: { status: 'approved', mailState: approval.mailState, emailVerified: false } };
+  }
   const sent = await mail.sendSignIn(existing.email, config.authContinueUrl);
   await store.transaction(async (tx) => {
     const current = await tx.get<AccessRequest>(`accessRequests/${id}`);
@@ -288,19 +367,142 @@ export async function setMembership(store: DocStore, actor: Actor, uid: string, 
 
 export async function retryNotification(store: DocStore, config: Config, mail: MailPort, actor: Actor, id: string, now: Date) {
   requireAdmin(actor);
-  await deliverNotification(store, config, mail, id, now);
+  await deliverNotification(store, config, mail, id, now, true);
   const note = await store.get<NotificationDoc>(`notifications/${id}`);
   if (!note) throw new ApiError(404, 'not_found', 'Not found');
   return { status: 200, body: { id: note.id, status: note.status, attempts: note.attempts, lastError: note.lastError } };
 }
 
 export async function retryDueNotifications(store: DocStore, config: Config, mail: MailPort, now: Date) {
-  const notes = await store.list<NotificationDoc>('notifications/');
-  for (const note of notes) {
-    if (note.data.status === 'accepted' || note.data.attempts >= 5) continue;
-    await deliverNotification(store, config, mail, note.data.id, now);
+  const deadline = Date.now() + RETRY_WORKER_BUDGET_MS;
+  const [notificationCursor, signInCursor] = await Promise.all([
+    store.get<{ afterPath: string | null }>('mailQueueCursors/notifications'),
+    store.get<{ afterPath: string | null }>('mailQueueCursors/sign-ins'),
+  ]);
+  const [notes, signIns] = await Promise.all([
+    store.list<NotificationDoc>('notifications/', { limit: MAX_RETRY_SCAN_PER_QUEUE, startAfter: notificationCursor?.afterPath ?? undefined }),
+    store.list<SignInMailDoc>('signInMail/', { limit: MAX_RETRY_SCAN_PER_QUEUE, startAfter: signInCursor?.afterPath ?? undefined }),
+  ]);
+  const progress = { notification: notificationCursor?.afterPath ?? null, 'sign-in': signInCursor?.afterPath ?? null };
+  const processed = { notification: 0, 'sign-in': 0 };
+  let sent = 0;
+  const rowCount = Math.max(notes.length, signIns.length);
+  for (let index = 0; index < rowCount; index += 1) {
+    if (sent >= MAX_RETRY_JOBS || Date.now() >= deadline) break;
+    const notification = notes[index];
+    if (notification) {
+      processed.notification += 1;
+      progress.notification = notification.path;
+      if (notificationDue(notification.data, now)) {
+        if (await deliverNotification(store, config, mail, notification.data.id || notification.path.split('/').at(-1)!, now)) sent += 1;
+      }
+    }
+    const signIn = signIns[index];
+    if (signIn && sent < MAX_RETRY_JOBS && Date.now() < deadline) {
+      processed['sign-in'] += 1;
+      progress['sign-in'] = signIn.path;
+      if (signInDue(signIn.data, now)) {
+        if (await deliverSignInMail(store, config, mail, signIn.path.split('/').at(-1)!, now)) sent += 1;
+      }
+    }
   }
-  return { status: 200, body: { retried: notes.filter((note) => note.data.status !== 'accepted').length } };
+  await Promise.all([
+    advanceQueueCursor(store, 'notifications', notificationCursor?.afterPath ?? null, notes, processed.notification, progress.notification),
+    advanceQueueCursor(store, 'sign-ins', signInCursor?.afterPath ?? null, signIns, processed['sign-in'], progress['sign-in']),
+  ]);
+  return { status: 200, body: { retried: sent, scanned: processed.notification + processed['sign-in'] } };
+}
+
+function notificationDue(data: NotificationDoc, now: Date): boolean {
+  if (data.status === 'sending') return Boolean(data.leaseUntil && Date.parse(data.leaseUntil) <= now.getTime());
+  if (data.status !== 'pending' && data.status !== 'failed') return false;
+  return data.attempts < MAX_RETRY_ATTEMPTS
+    && data.retryable !== false
+    && (!data.nextAttemptAt || Date.parse(data.nextAttemptAt) <= now.getTime());
+}
+
+function signInDue(data: SignInMailDoc, now: Date): boolean {
+  if (data.status === 'sending') return Boolean(data.leaseUntil && Date.parse(data.leaseUntil) <= now.getTime());
+  return data.status === 'pending'
+    && data.attempts < MAX_RETRY_ATTEMPTS
+    && (!data.nextAttemptAt || Date.parse(data.nextAttemptAt) <= now.getTime());
+}
+
+async function advanceQueueCursor(
+  store: DocStore,
+  queue: 'notifications' | 'sign-ins',
+  expected: string | null,
+  rows: { path: string }[],
+  processed: number,
+  afterPath: string | null,
+): Promise<void> {
+  const path = `mailQueueCursors/${queue}`;
+  const next = processed === rows.length && rows.length < MAX_RETRY_SCAN_PER_QUEUE ? null : afterPath;
+  await store.transaction(async (tx) => {
+    const current = await tx.get<{ afterPath: string | null }>(path);
+    if ((current?.afterPath ?? null) !== expected) return;
+    tx.set(path, { afterPath: next, updatedAt: new Date().toISOString() });
+  });
+}
+
+async function deliverSignInMail(store: DocStore, config: Config, mail: MailPort, hash: string, now: Date): Promise<boolean> {
+  const path = `signInMail/${hash}`;
+  const leaseToken = randomId('lease');
+  const claimed = await store.transaction(async (tx) => {
+    const current = await tx.get<SignInMailDoc>(path);
+    if (!current || !current.email || current.status === 'sent' || current.status === 'suppressed' || current.status === 'failed') return null;
+    const locked = current.status === 'sending' && current.leaseUntil && Date.parse(current.leaseUntil) > now.getTime();
+    if (locked || current.attempts >= MAX_RETRY_ATTEMPTS || (current.nextAttemptAt && Date.parse(current.nextAttemptAt) > now.getTime())) return null;
+    const next: SignInMailDoc = {
+      ...current,
+      status: 'sending',
+      attempts: current.attempts + 1,
+      updatedAt: now.toISOString(),
+      leaseUntil: new Date(now.getTime() + RETRY_LEASE_MS).toISOString(),
+      leaseToken,
+    };
+    tx.set(path, next);
+    return next;
+  });
+  if (!claimed?.email) return false;
+
+  const index = await store.get<{ uid: string }>(`memberEmails/${hash}`);
+  const member = index ? await store.get<MemberDoc>(memberPath(index.uid)) : null;
+  if (member?.status !== 'approved') {
+    await finishSignInMail(store, path, leaseToken, 'suppressed', false, null, now);
+    return true;
+  }
+  const result = await mail.sendSignIn(claimed.email, config.authContinueUrl);
+  await finishSignInMail(store, path, leaseToken, result.ok ? 'sent' : 'failed', result.retryable, result.ok ? null : result.detail || 'Sign-in email was not accepted', now);
+  return true;
+}
+
+async function finishSignInMail(
+  store: DocStore,
+  path: string,
+  leaseToken: string,
+  status: SignInMailDoc['status'],
+  retryable: boolean,
+  error: string | null,
+  now: Date,
+): Promise<void> {
+  await store.transaction(async (tx) => {
+    const latest = await tx.get<SignInMailDoc>(path);
+    if (!latest || latest.leaseToken !== leaseToken) return;
+    const retry = status === 'failed' && retryable && latest.attempts < MAX_RETRY_ATTEMPTS;
+    const delayMs = Math.min(60_000 * 2 ** Math.max(0, latest.attempts - 1), 15 * 60_000);
+    tx.set(path, {
+      ...latest,
+      email: status === 'sent' || status === 'suppressed' || !retry ? null : latest.email,
+      status: retry ? 'pending' : status,
+      retryable: retry,
+      lastError: error,
+      updatedAt: now.toISOString(),
+      nextAttemptAt: retry ? new Date(now.getTime() + delayMs).toISOString() : null,
+      leaseUntil: null,
+      leaseToken: null,
+    });
+  });
 }
 
 export async function resendApprovalMail(store: DocStore, config: Config, mail: MailPort, actor: Actor, id: string, now: Date) {

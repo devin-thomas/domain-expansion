@@ -39,9 +39,14 @@ export async function extractDrafts(store: DocStore, config: Config, ai: AiPort,
   let result = await ai.generate({ model: config.geminiPrimaryModel, apiKey, system: SYSTEM, user, timeoutMs: AI_ATTEMPT_TIMEOUT_MS });
   if (isTransient(result) && Date.now() - started < AI_TOTAL_TIMEOUT_MS) {
     const retryAfter = result.retryAfterMs ?? 0;
-    if (retryAfter > 0 && retryAfter < AI_TOTAL_TIMEOUT_MS - (Date.now() - started)) {
-      await new Promise((resolve) => setTimeout(resolve, Math.min(retryAfter, 50)));
+    const remainingBeforeRetry = AI_TOTAL_TIMEOUT_MS - (Date.now() - started);
+    if (retryAfter > 0 && retryAfter + 1000 >= remainingBeforeRetry) {
+      throw new ApiError(429, 'ai_unavailable', 'AI Quick Add is cooling down. You can try again shortly or add the domain manually.', {
+        retryable: true,
+        extra: { retryAfter: Math.max(1, Math.ceil(retryAfter / 1000)) },
+      });
     }
+    if (retryAfter > 0) await new Promise((resolve) => setTimeout(resolve, retryAfter));
     const remaining = AI_TOTAL_TIMEOUT_MS - (Date.now() - started);
     if (remaining > 1000 && config.geminiFallbackModel !== config.geminiPrimaryModel) {
       result = await ai.generate({
