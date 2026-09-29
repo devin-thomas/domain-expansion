@@ -83,6 +83,28 @@ describe('purchase contact fields', () => {
     }
   });
 
+  it('preserves a literal leading apostrophe in XLSX without weakening spreadsheet formula escaping', () => {
+    const records = [
+      record({ name: 'apostrophe.example', paymentMethod: "'Bank transfer" }),
+      record({ name: 'formula.example', paymentMethod: '=1+1' }),
+    ];
+    const csv = String(serializeBackup(records, 'csv').body);
+    expect(csv).toContain("''Bank transfer");
+    expect(csv).toContain("'=1+1");
+    expect(parseImport('csv', csv).domains.map((domain) => domain.paymentMethod)).toEqual(["'Bank transfer", '=1+1']);
+
+    const exported = serializeBackup(records, 'xlsx', DEFAULT_SETTINGS);
+    const workbook = XLSX.read(exported.body, { type: 'array', cellFormula: true });
+    expect(workbook.Sheets.Domains.N2).toMatchObject({ t: 's', v: "''Bank transfer" });
+    expect(workbook.Sheets.Domains.N3).toMatchObject({ t: 's', v: "'=1+1" });
+    expect(workbook.Sheets.Domains.N2.f).toBeUndefined();
+    expect(workbook.Sheets.Domains.N3.f).toBeUndefined();
+
+    const parsed = parseImport('xlsx', exported.body);
+    expect(parsed.fullFidelity).toBe(true);
+    expect(parsed.domains.map((domain) => domain.paymentMethod)).toEqual(["'Bank transfer", '=1+1']);
+  });
+
   it('accepts snake_case aliases in tabular imports', () => {
     const parsed = parseImport(
       'csv',

@@ -115,8 +115,12 @@ function neutralizeSpreadsheet(value: unknown): string | number | boolean | null
   if (value === null || value === undefined) return null;
   if (typeof value === 'number' || typeof value === 'boolean') return value;
   const text = String(value);
-  if (/^[=+\-@\t\r]/.test(text)) return `'${text}`;
+  if (/^[=+\-@'\t\r]/.test(text)) return `'${text}`;
   return text;
+}
+
+function restoreSpreadsheetText(text: string): string {
+  return text.replace(/^'(?=[=+\-@'\t\r])/, '');
 }
 
 function toCsv(records: DomainRecord[]): string {
@@ -335,7 +339,7 @@ function coerceDomain(item: unknown, path: string): CreateDomainInput {
 }
 
 function parseCsv(text: string): ParsedImport {
-  const rows = parseCsvRows(text).filter((row) => row.some((cell) => cell.trim() && !cell.trim().startsWith('#')));
+  const rows = parseCsvRows(text).filter((row) => row.some((cell) => cell.trim()) && !row[0]?.trimStart().startsWith('#'));
   if (rows.length < 2) throw new DomainInputError([{ path: 'file', message: 'CSV needs a header and at least one row' }]);
   const headers = rows[0].map((cell) => cell.trim());
   const domains: CreateDomainInput[] = [];
@@ -400,12 +404,12 @@ function coerceTabular(row: Record<string, unknown>): CreateDomainInput {
   const nullableText = (value: unknown): string | null => {
     if (value === null || value === undefined) return null;
     const text = String(value).trim();
-    return text === '' ? null : text.replace(/^'/, '');
+    return text === '' ? null : restoreSpreadsheetText(text);
   };
   const nullableFreeText = (value: unknown): string | null => {
     if (value === null || value === undefined) return null;
     const text = String(value);
-    return text === '' ? null : text.replace(/^'/, '');
+    return text === '' ? null : restoreSpreadsheetText(text);
   };
   const money = (value: unknown): number | null => {
     if (value === null || value === undefined || value === '') return null;
