@@ -332,6 +332,7 @@ function Gate({ onTestUser }: { onTestUser: () => Promise<void> }) {
       <div>
         <p className="text-sm text-indigo-300">Domain Expansion</p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight">Know what renews next.</h1>
+        <p className="mt-3 text-sm text-zinc-300">Track your domains, renewal dates, costs, and purchase details in a private portfolio. Review AI capture drafts before saving, and choose optional Google Calendar, Tasks, Sheets, or Drive actions when you need them.</p>
         <p className="mt-3 text-sm text-zinc-400">Approved members sign in by email. Everyone else can request access. A Firebase account alone does not open a portfolio.</p>
       </div>
       <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); rememberSignInEmail(email); void submit('/api/auth/email-link', { email }); }}>
@@ -350,7 +351,10 @@ function Gate({ onTestUser }: { onTestUser: () => Promise<void> }) {
         <button className="min-h-11 rounded-md border border-zinc-700" type="submit">Request access</button>
       </form>
       {message ? <p role="status" className="text-sm text-zinc-300">{message}</p> : null}
-      <a className="text-sm text-indigo-300" href="/showcase">View the showcase</a>
+      <nav aria-label="Public information" className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-indigo-300">
+        <a className="rounded underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300" href="/showcase">View the showcase</a>
+        <a className="rounded underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300" href="/privacy">Privacy notice</a>
+      </nav>
       {TEST_AUTH ? <button className="min-h-11 rounded-md border border-dashed border-zinc-600 text-sm" data-testid="test-sign-in" onClick={() => void onTestUser()}>Continue as test user</button> : null}
     </main>
   );

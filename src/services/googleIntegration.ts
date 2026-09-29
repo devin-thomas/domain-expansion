@@ -1,7 +1,7 @@
 import { MAX_INPUT_BYTES, type DomainRecord, type ReminderConfig, type RenewalIntent } from '../../shared/domain';
 
 const SCOPES = {
-  calendar: 'https://www.googleapis.com/auth/calendar.events',
+  calendar: 'https://www.googleapis.com/auth/calendar.events.owned',
   tasks: 'https://www.googleapis.com/auth/tasks',
   sheets: 'https://www.googleapis.com/auth/drive.file',
   driveFile: 'https://www.googleapis.com/auth/drive.file',

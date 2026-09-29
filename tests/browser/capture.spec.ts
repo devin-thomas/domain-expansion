@@ -1,5 +1,16 @@
 import { expect, test } from '@playwright/test';
 
+test('public homepage explains the product and opens privacy without signing in', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.getByText(/Track your domains, renewal dates, costs, and purchase details/)).toBeVisible();
+  await page.getByRole('navigation', { name: 'Public information' }).getByRole('link', { name: 'Privacy notice', exact: true }).click();
+  await expect(page).toHaveURL(/\/privacy$/);
+  await expect(page.getByRole('heading', { name: 'Privacy notice', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Google API Services User Data Policy', exact: true })).toHaveAttribute('href', 'https://developers.google.com/terms/api-services-user-data-policy');
+  await expect(page.getByText(/including its Limited Use requirements/)).toBeVisible();
+});
+
 test('quick add stays sparse on a phone-sized and desktop viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

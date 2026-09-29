@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildRecordFromCreate, DEFAULT_SETTINGS, parseCreateInput } from '../../shared/domain';
 import {
+  connectGoogle,
   createCalendarEvent,
   createTask,
   exportSheet,
@@ -22,9 +23,47 @@ const domain = buildRecordFromCreate(parseCreateInput({
   reminders: { enabled: true, target: 'billing', offsets: [30, 7, 1] },
 }), DEFAULT_SETTINGS, 'test-domain-id', '2026-09-28T00:00:00.000Z');
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
 
 describe('optional Google integrations', () => {
+  it.each([
+    ['calendar', 'https://www.googleapis.com/auth/calendar.events.owned'],
+    ['tasks', 'https://www.googleapis.com/auth/tasks'],
+    ['sheets', 'https://www.googleapis.com/auth/drive.file'],
+    ['driveFile', 'https://www.googleapis.com/auth/drive.file'],
+  ] as const)('requests only the %s action permission without inheriting other grants', async (action, scope) => {
+    type TokenClientConfig = Parameters<NonNullable<Window['google']>['accounts']['oauth2']['initTokenClient']>[0];
+    const configurations: TokenClientConfig[] = [];
+    const request = vi.fn();
+    const fetchMock = vi.fn();
+    vi.stubEnv('VITE_GOOGLE_OAUTH_CLIENT_ID', 'synthetic-client-id');
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('window', {
+      google: {
+        accounts: {
+          oauth2: {
+            initTokenClient(config: TokenClientConfig) {
+              configurations.push(config);
+              return { requestAccessToken: (options: { prompt?: string }) => {
+                request(options);
+                config.callback({ access_token: 'synthetic-access-token' });
+              } };
+            },
+          },
+        },
+      },
+    });
+
+    await expect(connectGoogle(action)).resolves.toBe('synthetic-access-token');
+    expect(configurations).toHaveLength(1);
+    expect(configurations[0]).toMatchObject({ client_id: 'synthetic-client-id', scope, include_granted_scopes: false });
+    expect(request).toHaveBeenCalledOnce();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('plans only enabled reminder offsets before the configured anchor', () => {
     expect(plannedReminderDates(domain.reminders, '2027-06-01')).toEqual([
       { offset: 30, date: '2027-05-02' },
