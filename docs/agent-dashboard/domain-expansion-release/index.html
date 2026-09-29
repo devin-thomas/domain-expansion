@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="dashboard-task-id" content="domain-expansion-release">
-  <meta name="dashboard-updated-at" content="2026-09-29T18:32:17Z">
+  <meta name="dashboard-updated-at" content="2026-09-29T18:40:41Z">
   <meta name="color-scheme" content="dark light">
   <title>Domain Expansion release status</title>
   <style>
@@ -92,7 +92,7 @@
 {
   "schema_version": 1,
   "task_id": "domain-expansion-release",
-  "updated_at": "2026-09-29T18:32:17Z",
+  "updated_at": "2026-09-29T18:40:41Z",
   "title": "Domain Expansion release",
   "overall_state": "healthy",
   "phase": "Technical release live; human acceptance deferred",
@@ -108,7 +108,7 @@
     "smallest_user_action": "None now. Review the deferred checks at final handoff."
   },
   "current_activity": {
-    "operation": "The corrected build is live. The canonical and Vercel production aliases return HTML rather than the former server bundle and source map; all six canonical routes returned HTTP 200. Browser tests pass 19/19.",
+    "operation": "The corrected build is live, and a read-only Google provider audit identified the exact remaining ownership and scope-declaration gaps. Search Console lists devthomas.site as Not verified; the OAuth app remains owner-only in Testing.",
     "next_checkpoint": "At final handoff, revisit the explicitly deferred device, accessibility, and Google provider checks. No immediate user action is needed."
   },
   "milestones": [
@@ -140,15 +140,15 @@
     {
       "name": "Google provider acceptance and publication",
       "state": "blocked",
-      "detail": "Google consent and Calendar/Tasks/Sheets/Drive actions, OAuth publication or verification, and Search Console/domain ownership evidence are still pending. No Google provider grant or action is claimed."
+      "detail": "Search Console lists devthomas.site as Not verified. The OAuth app remains External/Testing with one test user. Shared-project declarations still include broad calendar.events and restricted gmail.readonly, while calendar.events.owned is absent. Real consent/actions, declaration reconciliation, ownership verification, and publication are pending."
     }
   ],
   "blockers": [
     {
-      "cause": "Google provider consent, real provider actions, and publication/ownership verification have not been completed.",
+      "cause": "Search Console ownership is Not verified; OAuth scope declarations need reconciliation; Google consent, real provider actions, and publication have not been completed.",
       "impact": "DEW-017 remains blocked; Google-integrated actions are not provider-accepted.",
       "owner": "User/provider acceptance at final handoff",
-      "recovery_path": "At final handoff, decide whether to authorize the real Google consent and provider walkthrough, then record actual provider and publication results.",
+      "recovery_path": "At final handoff, reconcile shared-project scopes, verify domain ownership, then decide whether to authorize real Google consent/provider actions and publication. Record each actual result separately.",
       "independent_work": "The technical release and private status dashboard can continue now."
     },
     {
@@ -206,7 +206,7 @@
   ],
   "next_up": [
     "At final handoff, perform the deferred Android capture/edit, screen-reader, and actual browser-level zoom checks.",
-    "At final handoff, decide whether to authorize Google consent, provider actions, publication, and ownership verification.",
+    "At final handoff, reconcile OAuth declarations and Search Console ownership, then decide whether to authorize Google consent, provider actions, and publication.",
     "Keep the dashboard available for the final handoff while the host is awake."
   ],
   "activity_log": [
@@ -245,12 +245,16 @@
     {
       "timestamp": "2026-09-29T18:32:17Z",
       "event": "Deployed build-boundary repair 4753e1b as READY dpl_2ZWRrTPU8zkeXB2bcsg6yZg9ZcBb. The canonical and Vercel production aliases now return HTML for former server-artifact paths; six canonical routes returned HTTP 200. Browser accessibility regressions passed 19/19."
+    },
+    {
+      "timestamp": "2026-09-29T18:40:41Z",
+      "event": "Read-only Google provider inspection confirmed Search Console marks devthomas.site Not verified, OAuth remains External/Testing with one test user, and shared scope declarations omit calendar.events.owned while retaining calendar.events and gmail.readonly. No provider settings or access were changed."
     }
   ],
   "walk_away": {
     "last_verified_good_state": "Build-boundary source 4753e1b was served by READY deployment dpl_2ZWRrTPU8zkeXB2bcsg6yZg9ZcBb on the canonical alias. Six routes returned HTTP 200; former public server-artifact paths returned HTML on both production aliases. Underlying application source 2c1cdc3 passed the eight-group live backend verifier, API/CLI 77/77, unit 65/65, and hosted macOS CLI. Emulator 8/8 passed on e644c23; browser 19/19 and lint/build passed on 4753e1b.",
     "unfinished_operation": "Google provider and remaining device/accessibility acceptance are deferred by user instruction.",
-    "exact_next_safe_step": "At final handoff, review the deferred checks and decide whether to perform the Google provider actions.",
+    "exact_next_safe_step": "At final handoff, review the deferred checks; reconcile shared OAuth scopes and Search Console ownership before any Google publication or provider actions.",
     "touched_files_or_services": "Build-boundary source 4753e1b is on origin/main. The dashboard folder is tracked; Tailscale Serve points to its dedicated loopback static server. No private host details or secrets are in the repository snapshot.",
     "expected_running_processes": "One loopback Python static server and one Tailscale Serve mapping; local runtime metadata records their details.",
     "user_action": "None until final handoff."
@@ -259,7 +263,7 @@
     "mode": "Portable repository snapshot and private Tailscale Serve",
     "native_artifact": "Unavailable in this host.",
     "tailscale": "Host-side private HTTPS endpoint verified with matching dashboard identity and timestamp; the tailnet URL is shared in chat, not committed.",
-    "last_verified": "2026-09-29T18:32:17Z; READY canonical Vercel alias, six live routes, public server-artifact paths no longer expose code, browser 19/19 and build/lint on 4753e1b, earlier emulator 8/8 on e644c23, underlying implementation verifier and hosted macOS CLI.",
+    "last_verified": "2026-09-29T18:40:41Z; read-only Search Console and Google Auth Platform state, READY canonical Vercel alias, six live routes, public server-artifact paths no longer expose code, browser 19/19 and build/lint on 4753e1b, earlier emulator 8/8 and underlying implementation verifier.",
     "repository_persistence": "Dashboard source and state are tracked on main; this update is committed as a checkpoint.",
     "limitation": "Tailnet access depends on this host staying awake and connected. A second-device dashboard visit has not been independently tested."
   }

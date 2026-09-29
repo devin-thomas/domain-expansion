@@ -32,7 +32,7 @@ Current source checks pass API/CLI 77/77, unit 65/65, browser 18/18, lint, produ
 
 ## Production gate
 
-Google preparation is recorded in [the OAuth verification packet](GOOGLE-OAUTH-VERIFICATION.md). On September 29, the homepage gained a direct privacy link and product description, the notice gained specific OAuth data handling and Limited Use disclosures, and Calendar narrowed its scope to `calendar.events.owned`. Provider declaration reconciliation, Search Console ownership evidence, real grants/actions, demonstration evidence, and publication/review remain unverified. This preparation does not close DEW-017.
+Google preparation is recorded in [the OAuth verification packet](GOOGLE-OAUTH-VERIFICATION.md). On September 29, the homepage gained a direct privacy link and product description, the notice gained specific OAuth data handling and Limited Use disclosures, and Calendar narrowed its scope to `calendar.events.owned`. Read-only provider inspection found `devthomas.site` listed as Not verified in Search Console, the app still External/Testing with one test user, and shared-project scope declarations still containing broad `calendar.events` and restricted `gmail.readonly` while lacking `calendar.events.owned`. Provider declaration reconciliation, ownership verification, real grants/actions, demonstration evidence, and publication/review remain open. This preparation does not close DEW-017.
 
 For Vercel origin `e8ee8e2` and Worker version `f55846c2-a646-4499-be51-2b06b46eb51b`, these canonical-host checks passed:
 

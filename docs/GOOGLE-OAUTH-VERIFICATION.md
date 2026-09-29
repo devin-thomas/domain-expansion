@@ -2,6 +2,8 @@
 
 Prepared September 29, 2026. This is a review packet and test script, not proof of consent, publication, domain ownership verification, or Google approval.
 
+Read-only provider inspection on September 29, 2026 confirmed that Search Console lists `devthomas.site` as **Not verified** for the owner account. Google Auth Platform shows the app as External/Testing with one test user; Verification Center says verification is not required while it remains in Testing. Branding still uses Domain Expansion, the canonical homepage and privacy URL, and `devthomas.site` as an authorized domain. The shared project has two web OAuth clients: Domain Expansion integrations and an earlier auto-created client. Its declared scopes are `drive.file`, `calendar.events`, `tasks`, and restricted `gmail.readonly`; the app's newer `calendar.events.owned` scope is not yet declared there. This was inspection only: no property verification, scope change, consent, publication, or submission occurred.
+
 ## Application and public disclosures
 
 - Product: Domain Expansion, the private domain renewal tracker.
@@ -31,7 +33,7 @@ Calendar read-only access cannot create the selected event. Access to app-create
 
 Tasks read-only access cannot create a reminder: compare [Tasks list](https://developers.google.com/workspace/tasks/reference/rest/v1/tasks/list) with [Tasks insert](https://developers.google.com/workspace/tasks/reference/rest/v1/tasks/insert). Sheets and Drive use Google's recommended [per-file scope](https://developers.google.com/workspace/drive/api/guides/api-specific-auth).
 
-The shared project's last observed declarations still include preexisting `gmail.readonly` metadata. Before submission, reconcile it with any other client using that scope and the final requested scope list. Do not silently remove another application's scope or claim restricted-scope review is unnecessary based only on this app's code. Update the obsolete Calendar declaration to owned-events access when reviewing the final provider configuration.
+The shared project's inspected declarations still include preexisting `gmail.readonly` and broad `calendar.events` metadata, while the app requests `calendar.events.owned`. Before submission, reconcile the declarations with the other client and the final requested scope list. Do not silently remove another application's scope or claim restricted-scope review is unnecessary based only on this app's code. Update the obsolete Calendar declaration to owned-events access when reviewing the final provider configuration.
 
 ## Consent and provider acceptance script
 
