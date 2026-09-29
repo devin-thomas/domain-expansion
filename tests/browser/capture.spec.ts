@@ -29,7 +29,6 @@ test('quick add stays sparse on a phone-sized and desktop viewport', async ({ pa
   await expect(page.getByText('Private Firestore', { exact: true })).toBeVisible();
   await expect(page.getByText(/app data/i)).toHaveCount(0);
 });
-
 test('five fields stay reachable at 200 percent zoom and AI review does not save by itself', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
@@ -104,6 +103,12 @@ test('settings connects token management and import commit to the portfolio', as
   await expect(page.getByText(/Applied 1 rows/)).toBeVisible();
   await page.getByTestId('nav-domains').click();
   await expect(page.getByRole('button', { name: /imported\.example/ })).toBeVisible();
+  await page.getByTestId('nav-settings').click();
+  await page.getByLabel('Domain for Calendar or Tasks').selectOption({ label: 'imported.example' });
+  await page.getByRole('button', { name: 'Preview Calendar reminder' }).click();
+  await expect(page.getByTestId('external-reminder-preview')).toContainText('primary Google Calendar');
+  await expect(page.getByTestId('external-reminder-date').locator('option')).toHaveCount(4);
+  await expect(page.getByText(/No Google permission is requested until you confirm/)).toBeVisible();
 });
 
 test('payment fields validate and persist even after advanced details are collapsed', async ({ page }) => {

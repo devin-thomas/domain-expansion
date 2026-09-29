@@ -10,6 +10,7 @@ import {
   buildRecordFromCreate,
   parseCreateInput,
   reminderAnchor,
+  resolveReminderTarget,
   urgencyFor,
   type AppSettings,
   type Currency,
@@ -18,7 +19,7 @@ import {
   type ReminderConfig,
 } from '../shared/domain';
 import { ApiClientError, api, completeEmailLink, getMemoryToken, linkInLocation, minorToField, rememberSignInEmail, setMemoryToken, signOutSession, storedSignInEmail, watchAuth } from './services/client';
-import { backupToDrive, connectGoogle, createCalendarEvent, createTask, exportSheet, googleConfigured } from './services/googleIntegration';
+import { backupToDrive, connectGoogle, createCalendarEvent, createTask, domainSheetRows, downloadDriveBackup, exportSheet, googleConfigured, listDriveBackups, plannedReminderDates, reminderTitle, type DriveBackupFile } from './services/googleIntegration';
 
 type View = 'dashboard' | 'domains' | 'settings' | 'admin';
 type DomainView = DomainRecord & { id: string; revision: number; normalizedName: string };
@@ -750,6 +751,32 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
   const [tokenScopes, setTokenScopes] = useState<string[]>(['domains:read', 'domains:write']);
   const [tokenDays, setTokenDays] = useState(90);
   const [selectedDomainId, setSelectedDomainId] = useState('');
+  const [integrationBusy, setIntegrationBusy] = useState(false);
+  const integrationBusyRef = useRef(false);
+  const integrationMounted = useRef(true);
+  const [reminderPlan, setReminderPlan] = useState<{ action: 'calendar' | 'tasks'; domain: DomainView; anchor: string; target: 'billing' | 'expiration'; items: { offset: number; date: string }[] } | null>(null);
+  const [reminderOffset, setReminderOffset] = useState<number | null>(null);
+  const [driveBackups, setDriveBackups] = useState<DriveBackupFile[]>([]);
+  const [selectedDriveBackup, setSelectedDriveBackup] = useState('');
+  const [driveRestoreContent, setDriveRestoreContent] = useState<{ content: string; nonce: number } | null>(null);
+  const driveToken = useRef<{ accessToken: string; sessionToken: string } | null>(null);
+
+  useEffect(() => {
+    integrationMounted.current = true;
+    return () => {
+      integrationMounted.current = false;
+      driveToken.current = null;
+    };
+  }, []);
+
+  function captureIntegrationSession(): { token: string; isCurrent: () => boolean } | null {
+    const token = getMemoryToken();
+    if (!token) {
+      setIntegrationNote('Sign in before using Google integrations.');
+      return null;
+    }
+    return { token, isCurrent: () => integrationMounted.current && getMemoryToken() === token };
+  }
 
   useEffect(() => {
     void Promise.all([
@@ -816,47 +843,153 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
     }
   }
 
-  async function runIntegration(action: 'calendar' | 'tasks' | 'sheets' | 'driveFile') {
+  function prepareReminder(action: 'calendar' | 'tasks') {
     const domain = domains.find((item) => item.id === selectedDomainId && !item.isArchived);
-    if (!domain && action !== 'sheets' && action !== 'driveFile') {
+    if (!domain) {
       setIntegrationNote('Choose a domain before creating an external reminder.');
       return;
     }
+    const anchor = reminderAnchor(domain);
+    if (!anchor) {
+      setReminderPlan(null);
+      setIntegrationNote(`${domain.name} has no effective billing or expiration date.`);
+      return;
+    }
+    const items = plannedReminderDates(domain.reminders, anchor);
+    if (!items.length) {
+      setReminderPlan(null);
+      setIntegrationNote(domain.reminders.enabled ? `${domain.name} has no reminder offsets configured.` : `${domain.name} reminders are disabled. Enable reminders before creating an external reminder.`);
+      return;
+    }
+    const target = resolveReminderTarget(domain.reminders, domain.renewalIntent);
+    setReminderPlan({ action, domain, anchor, target, items });
+    setReminderOffset(items[0].offset);
+    setIntegrationNote(null);
+  }
+
+  async function createPlannedReminder() {
+    if (!reminderPlan || integrationBusyRef.current) return;
+    const { action, domain, anchor, target, items } = reminderPlan;
+    const selected = items.find((item) => item.offset === reminderOffset);
+    if (!selected) return;
+    const session = captureIntegrationSession();
+    if (!session) return;
+    integrationBusyRef.current = true;
+    setIntegrationBusy(true);
     try {
       const accessToken = await connectGoogle(action);
-      if (action === 'calendar' && domain) {
-        const date = reminderAnchor(domain);
-        if (!date) throw new Error('That domain has no effective date.');
-        const title = domain.renewalIntent === 'let_expire' ? `Review expiration of ${domain.name}` : `Renew ${domain.name}`;
-        const result = await createCalendarEvent(accessToken, title, date, `${domain.id}:${date}`);
-        if (result.uncertain) {
-          setIntegrationNote('Could not check for an existing event. Nothing was created. Try again when Calendar responds.');
-          return;
-        }
-        await api(`/api/v1/domains/${domain.id}/integrations`, { method: 'POST', ifMatch: `"${domain.revision}"`, body: { calendarEventId: result.id, calendarReconcileKey: `${domain.id}:${date}` } });
-        setIntegrationNote(result.alreadyExisted ? 'Matched the existing calendar event.' : 'Calendar event created. The domain was already saved.');
-      } else if (action === 'tasks' && domain) {
-        const date = reminderAnchor(domain);
-        if (!date) throw new Error('That domain has no effective date.');
-        const title = domain.renewalIntent === 'let_expire' ? `Review expiration of ${domain.name}` : `Renew ${domain.name}`;
-        const result = await createTask(accessToken, title, date, `${domain.id}:${date}`);
-        if (result.uncertain) {
-          setIntegrationNote('Could not check for an existing task. Nothing was created.');
-          return;
-        }
-        await api(`/api/v1/domains/${domain.id}/integrations`, { method: 'POST', ifMatch: `"${domain.revision}"`, body: { tasksTaskId: result.id, tasksReconcileKey: `${domain.id}:${date}` } });
-        setIntegrationNote(result.alreadyExisted ? 'Matched the existing task.' : 'Task created. The domain was already saved.');
-      } else if (action === 'sheets') {
-        const url = await exportSheet(accessToken, [['name', 'expiration'], ...domains.map((item) => [item.name, item.expirationDate ?? ''])]);
-        setIntegrationNote(`Sheet created: ${url}`);
-      } else if (action === 'driveFile') {
-        const exported = await api<{ content: string }>('/api/v1/export?format=json&includeSettings=true');
-        const name = await backupToDrive(accessToken, `domain-expansion-${new Date().toISOString().slice(0, 10)}.json`, exported.data.content);
-        setIntegrationNote(`Visible Drive backup created: ${name}`);
+      if (!session.isCurrent()) return;
+      const date = selected.date;
+      const reconcileKey = `${domain.id}:${anchor}:offset:${selected.offset}`;
+      const title = reminderTitle(domain.name, domain.renewalIntent, selected.offset);
+      const result = action === 'calendar'
+        ? await createCalendarEvent(accessToken, title, date, reconcileKey, session.isCurrent)
+        : await createTask(accessToken, title, date, reconcileKey, session.isCurrent);
+      if (!session.isCurrent()) return;
+      if (result.uncertain) {
+        setIntegrationNote(`Google could not confirm whether the ${action === 'calendar' ? 'event' : 'task'} for ${domain.name} was created. Check ${action === 'calendar' ? 'Calendar' : 'Tasks'} before retrying.`);
+        return;
       }
+      try {
+        if (!session.isCurrent()) return;
+        await api(`/api/v1/domains/${domain.id}/integrations`, {
+          method: 'POST',
+          ifMatch: `"${domain.revision}"`,
+          body: action === 'calendar'
+            ? { calendarEventId: result.id, calendarReconcileKey: reconcileKey }
+            : { tasksTaskId: result.id, tasksReconcileKey: reconcileKey },
+        });
+      } catch (error) {
+        if (!session.isCurrent()) return;
+        setIntegrationNote(`${result.alreadyExisted ? 'Matched' : 'Created'} the ${action === 'calendar' ? 'Calendar event' : 'Tasks reminder'} for ${domain.name} on ${date}, but could not update its Domain Expansion reference: ${error instanceof Error ? error.message : 'refresh and try again'}.`);
+        await onChanged();
+        return;
+      }
+      setIntegrationNote(`${result.alreadyExisted ? 'Matched' : 'Created'} the ${action === 'calendar' ? 'Calendar event' : 'Tasks reminder'} for ${domain.name} on ${date} (${target}, ${selected.offset} days before ${anchor}).`);
+      setReminderPlan(null);
       await onChanged();
     } catch (error) {
-      setIntegrationNote(error instanceof Error ? error.message : 'Integration failed. Domain records stay as they were.');
+      if (session.isCurrent()) setIntegrationNote(error instanceof Error ? error.message : 'Integration failed. Domain records stay as they were.');
+    } finally {
+      integrationBusyRef.current = false;
+      if (integrationMounted.current) setIntegrationBusy(false);
+    }
+  }
+
+  async function runIntegration(action: 'sheets' | 'driveFile') {
+    if (integrationBusyRef.current) return;
+    const session = captureIntegrationSession();
+    if (!session) return;
+    integrationBusyRef.current = true;
+    setIntegrationBusy(true);
+    try {
+      const accessToken = await connectGoogle(action);
+      if (!session.isCurrent()) return;
+      if (action === 'sheets') {
+        const url = await exportSheet(accessToken, domainSheetRows(domains), session.isCurrent);
+        if (!session.isCurrent()) return;
+        setIntegrationNote(`Full domain table created in Google Sheets: ${url}`);
+      } else {
+        const exported = await api<{ content: string }>('/api/v1/export?format=json&includeSettings=true');
+        if (!session.isCurrent()) return;
+        const name = await backupToDrive(accessToken, `domain-expansion-${new Date().toISOString().slice(0, 10)}.json`, exported.data.content, session.isCurrent);
+        if (!session.isCurrent()) return;
+        setIntegrationNote(`Visible Drive backup created: ${name}`);
+      }
+      if (!session.isCurrent()) return;
+      await onChanged();
+    } catch (error) {
+      if (session.isCurrent()) setIntegrationNote(error instanceof Error ? error.message : 'Integration failed. Domain records stay as they were.');
+    } finally {
+      integrationBusyRef.current = false;
+      if (integrationMounted.current) setIntegrationBusy(false);
+    }
+  }
+
+  async function findDriveBackups() {
+    if (integrationBusyRef.current) return;
+    const session = captureIntegrationSession();
+    if (!session) return;
+    integrationBusyRef.current = true;
+    setIntegrationBusy(true);
+    try {
+      const accessToken = await connectGoogle('driveFile');
+      if (!session.isCurrent()) return;
+      const files = await listDriveBackups(accessToken, session.isCurrent);
+      if (!session.isCurrent()) return;
+      driveToken.current = { accessToken, sessionToken: session.token };
+      setDriveBackups(files);
+      setSelectedDriveBackup(files[0]?.id ?? '');
+      setIntegrationNote(files.length ? `Found ${files.length} date-named JSON backup${files.length === 1 ? '' : 's'} you can choose to validate.` : 'No date-named Domain Expansion JSON backups are available to this app.');
+    } catch (error) {
+      if (session.isCurrent()) setIntegrationNote(error instanceof Error ? error.message : 'Drive backups could not be listed.');
+    } finally {
+      integrationBusyRef.current = false;
+      if (integrationMounted.current) setIntegrationBusy(false);
+    }
+  }
+
+  async function previewDriveBackup() {
+    const file = driveBackups.find((item) => item.id === selectedDriveBackup);
+    const grant = driveToken.current;
+    if (!file || !grant || integrationBusyRef.current) return;
+    const session = captureIntegrationSession();
+    if (!session || session.token !== grant.sessionToken) {
+      driveToken.current = null;
+      return;
+    }
+    integrationBusyRef.current = true;
+    setIntegrationBusy(true);
+    try {
+      const content = await downloadDriveBackup(grant.accessToken, file.id, session.isCurrent);
+      if (!session.isCurrent()) return;
+      setDriveRestoreContent({ content, nonce: Date.now() });
+      setIntegrationNote(`Downloaded ${file.name} for validation. Nothing has been imported.`);
+    } catch (error) {
+      if (session.isCurrent()) setIntegrationNote(error instanceof Error ? error.message : 'The selected backup could not be downloaded.');
+    } finally {
+      integrationBusyRef.current = false;
+      if (integrationMounted.current) setIntegrationBusy(false);
     }
   }
 
@@ -888,25 +1021,37 @@ function Settings({ settings, domains, onChanged }: { settings: AppSettings; dom
         {plaintext ? <p className="break-all rounded-md bg-zinc-900 p-3 font-mono text-xs" role="status">{plaintext}</p> : null}
         <ul className="space-y-2 text-sm">{tokens.map((token) => <li key={token.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-800 p-2"><span>{token.name} · {token.scopes.join(', ')} · expires {token.expiresAt.slice(0, 10)}{token.revokedAt ? ' · revoked' : ''}</span>{!token.revokedAt ? <button type="button" className="text-rose-300" onClick={() => void revokeToken(token.id)}>Revoke</button> : null}</li>)}</ul>
       </form>
-      <Transfer domains={domains} onChanged={onChanged} />
       <section className="grid gap-3">
         <h2 className="text-lg font-semibold">Google integrations</h2>
         <p className="text-sm text-zinc-400">{googleConfigured() ? 'Connect Google only for the action you choose. This does not change your Domain Expansion sign-in.' : 'Google integrations are optional and currently not configured. Saving domains does not require them.'}</p>
         <label className="text-sm">Domain for Calendar or Tasks<select className="field" value={selectedDomainId} onChange={(event) => setSelectedDomainId(event.target.value)}><option value="">Choose a domain</option>{domains.filter((domain) => !domain.isArchived).map((domain) => <option key={domain.id} value={domain.id}>{domain.name}</option>)}</select></label>
         <div className="flex flex-wrap gap-2">
-          <button className="min-h-11 rounded-md border border-zinc-700 px-3" onClick={() => void runIntegration('calendar')}>Calendar</button>
-          <button className="min-h-11 rounded-md border border-zinc-700 px-3" onClick={() => void runIntegration('tasks')}>Tasks</button>
-          <button className="min-h-11 rounded-md border border-zinc-700 px-3" onClick={() => void runIntegration('sheets')}>Sheets</button>
-          <button className="min-h-11 rounded-md border border-zinc-700 px-3" onClick={() => void runIntegration('driveFile')}>Visible Drive backup</button>
+          <button type="button" className="min-h-11 rounded-md border border-zinc-700 px-3 disabled:opacity-50" disabled={integrationBusy} onClick={() => prepareReminder('calendar')}>Preview Calendar reminder</button>
+          <button type="button" className="min-h-11 rounded-md border border-zinc-700 px-3 disabled:opacity-50" disabled={integrationBusy} onClick={() => prepareReminder('tasks')}>Preview Tasks reminder</button>
+          <button type="button" className="min-h-11 rounded-md border border-zinc-700 px-3 disabled:opacity-50" disabled={integrationBusy} onClick={() => void runIntegration('sheets')}>Export full table to Sheets</button>
+          <button type="button" className="min-h-11 rounded-md border border-zinc-700 px-3 disabled:opacity-50" disabled={integrationBusy} onClick={() => void runIntegration('driveFile')}>Create visible Drive backup</button>
+          <button type="button" className="min-h-11 rounded-md border border-zinc-700 px-3 disabled:opacity-50" disabled={integrationBusy} onClick={() => void findDriveBackups()}>Find Drive backups</button>
         </div>
+        {reminderPlan ? <div className="grid gap-2 rounded-md border border-zinc-800 p-3" data-testid="external-reminder-preview">
+          <p className="text-sm">Preview for {reminderPlan.domain.name}: {reminderPlan.action === 'calendar' ? 'primary Google Calendar' : 'default Google Tasks list'} · {reminderPlan.target} date {reminderPlan.anchor}.</p>
+          <label className="text-sm">Reminder date<select className="field" data-testid="external-reminder-date" value={reminderOffset ?? ''} onChange={(event) => setReminderOffset(Number(event.target.value))}>{reminderPlan.items.map((item) => <option key={item.offset} value={item.offset}>{item.date} · {item.offset} days before</option>)}</select></label>
+          <p className="text-xs text-zinc-400">Only this selected item will be created. No Google permission is requested until you confirm.</p>
+          <div className="flex gap-2"><button type="button" className="min-h-11 rounded-md bg-indigo-600 px-3 disabled:opacity-50" data-testid="create-external-reminder" disabled={integrationBusy} onClick={() => void createPlannedReminder()}>Create selected reminder</button><button type="button" className="min-h-11 rounded-md border border-zinc-700 px-3" disabled={integrationBusy} onClick={() => setReminderPlan(null)}>Cancel</button></div>
+        </div> : null}
+        {driveBackups.length ? <div className="grid gap-2 rounded-md border border-zinc-800 p-3">
+          <label className="text-sm">Domain Expansion Drive backup<select className="field" data-testid="drive-backup-choice" value={selectedDriveBackup} onChange={(event) => setSelectedDriveBackup(event.target.value)}>{driveBackups.map((file) => <option key={file.id} value={file.id}>{file.name} · {new Date(file.createdTime).toLocaleString()}</option>)}</select></label>
+          <p className="text-xs text-zinc-400">The selected file is downloaded only after you choose Preview. The existing validated import preview must be committed separately.</p>
+          <button type="button" className="min-h-11 rounded-md border border-zinc-700 px-3 disabled:opacity-50" data-testid="preview-drive-backup" disabled={integrationBusy || !selectedDriveBackup} onClick={() => void previewDriveBackup()}>Preview selected backup</button>
+        </div> : null}
         {integrationNote ? <p className="text-sm text-zinc-300">{integrationNote}</p> : null}
       </section>
+      <Transfer domains={domains} onChanged={onChanged} driveRestoreContent={driveRestoreContent} />
       {message ? <p role="status" className="text-sm text-emerald-300">{message}</p> : null}
     </div>
   );
 }
 
-function Transfer({ domains, onChanged }: { domains: DomainView[]; onChanged: () => Promise<void> }) {
+function Transfer({ domains, onChanged, driveRestoreContent }: { domains: DomainView[]; onChanged: () => Promise<void>; driveRestoreContent: { content: string; nonce: number } | null }) {
   const [preview, setPreview] = useState<{ previewId: string; contentHash: string; rows: { name: string; action: string; currencyClearsCosts: boolean; issues: string[]; changes: { field: string; before: unknown; after: unknown }[] }[]; settingsChanges: { field: string; before: unknown; after: unknown }[]; warnings: string[]; currencyAcknowledgementRequired: boolean } | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [fileData, setFileData] = useState<{ format: string; content: string; encoding: string } | null>(null);
@@ -938,6 +1083,14 @@ function Transfer({ domains, onChanged }: { domains: DomainView[]; onChanged: ()
     commitKey.current = crypto.randomUUID();
     setNote('Preview only. Nothing has been saved.');
   }
+  useEffect(() => {
+    if (!driveRestoreContent) return;
+    const input = { format: 'json', content: driveRestoreContent.content, encoding: 'utf8' };
+    setFileData(input);
+    void showPreview(input, policy, acknowledgeCurrencyChanges).catch((error) => {
+      setNote(error instanceof Error ? error.message : 'The Drive backup could not be previewed.');
+    });
+  }, [driveRestoreContent?.nonce]);
   async function onFile(file: File) {
     try {
       const format = file.name.endsWith('.xlsx') ? 'xlsx' : file.name.endsWith('.yaml') || file.name.endsWith('.yml') ? 'yaml' : file.name.endsWith('.csv') ? 'csv' : file.name.endsWith('.sql') ? 'sql' : 'json';
