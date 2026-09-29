@@ -1,6 +1,6 @@
 # DEW-010 — Deliver the thin official CLI
 
-**Status:** Complete
+**Status:** Blocked
 
 ## Goal
 
@@ -30,4 +30,4 @@ Contract: SPEC section 10; R07, R08, R09.
 
 ## Verification
 
-2026-09-27. `tests/cli/cli.test.ts` drives `cli/main.ts` against the local API: help, version `1.0.0`, refusal of `--token`, add, idempotent replay, list, archive, and permanent delete refused for a read/write token. This run was Linux only. Windows and macOS were not executed.
+2026-09-29. `tests/cli/cli.test.ts` drives `cli/main.ts` against the local API: help, version `1.0.0`, refusal of `--token`, add, idempotent replay, list, archive, and permanent delete refused for a read/write token. On Windows 11 Pro (build 26200), PowerShell 7.6.6, Node 24.18.0, and npm 12.1.0, `npm link` installed the command and global `domain-expansion help` plus `domain-expansion version` returned help and version `1.0.0`. The current 38/38 API/CLI aggregate was run on Windows; the earlier Linux CLI run is historical evidence only. macOS acceptance remains unverified: the available `m1` SSH connection on port 22 timed out, so the documented installation and runtime commands have not been tested there. Keep this ticket Blocked until macOS acceptance is completed.

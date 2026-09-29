@@ -31,4 +31,4 @@ Contract: SPEC section 11.1; R04, R11, R15.
 
 ## Verification
 
-2026-09-27 baseline: JSON, YAML, and XLSX round-trip the rich fixture; SQL text is never executed; CSV is labeled lossy. The 2026-09-28 focused payment-field tests passed 10/10, covering format round trips and compatibility with older records. Final integrated portability regression remains pending.
+2026-09-29. The unit suite passes 59/59, including rich-field and optional purchase-field round trips through supported JSON, YAML, CSV, and XLSX import/export paths, plus SQL domain-table export; older records normalize absent purchase fields to null. API/CLI tests pass 38/38 and the Firestore emulator suite passes 8/8. SQL text remains inert, CSV remains labeled as a domain-table export, and import commits remain previewed, revision-bound, and atomic. The earlier focused payment-field suite passed 10/10; the integrated regression is now covered by the current unit/API suite.

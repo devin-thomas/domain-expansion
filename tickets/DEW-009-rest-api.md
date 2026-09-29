@@ -30,4 +30,4 @@ Contract: SPEC sections 4–5 and 9; R07, R08, R15.
 
 ## Verification
 
-2026-09-27 baseline: API matrix and route tests cover health, isolation, idempotency, revisions, batch atomicity, import preview/commit, export isolation, and OpenAPI route mapping. The focused payment-field unit/API tests passed 10/10 on 2026-09-28, including import/export round trips. Final integrated API/OpenAPI verification remains pending.
+2026-09-29. The integrated API/CLI suite passes 38/38, including ownership/scope boundaries, idempotency, revision preconditions, batch atomicity, import preview/commit, export isolation, payment-field validation and round trips, and OpenAPI route coverage. The OpenAPI contract is checked against the runtime schemas and handlers. The production verifier also passed all eight CLI/API groups, including update/archive/unarchive, scope enforcement, and token revocation. The final source suite, lint, and production build passed; deployment evidence is tracked under DEW-017.

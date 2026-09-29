@@ -2,7 +2,7 @@
 
 **Status:** Complete
 
-September 29 update: Calendar now requests `calendar.events.owned`, sufficient for the adapter's primary-calendar list/create operations. The Google integration suite passes 16/16, including four authorization tests that verify each feature requests only its scope with `include_granted_scopes: false`. Unit checks pass 36/36; lint, build, browser/server boundary, and compiled runtime checks pass. Real provider acceptance remains pending under DEW-017. See [OAuth verification preparation](../docs/GOOGLE-OAUTH-VERIFICATION.md).
+September 29 update: Calendar now requests `calendar.events.owned`, sufficient for the adapter's primary-calendar list/create operations. The Google integration suite passes 16/16, including four authorization tests that verify each feature requests only its scope with `include_granted_scopes: false`. The latest unit suite passes 59/59; lint, build, browser/server boundary, and compiled runtime checks pass. Real provider acceptance remains pending under DEW-017. See [OAuth verification preparation](../docs/GOOGLE-OAUTH-VERIFICATION.md).
 
 ## Goal
 
