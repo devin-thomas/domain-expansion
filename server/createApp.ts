@@ -1,10 +1,10 @@
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createLiveMail, createGeminiPort, createMemoryDirectory, createAdminDirectory, scrubLog } from './adapters';
-import { loadConfig, type Config } from './config';
-import { handleApi, prepareDeps, type AppDeps } from './http';
-import { MemoryStore, createFirestoreStore } from './store';
+import { createLiveMail, createGeminiPort, createMemoryDirectory, createAdminDirectory, scrubLog } from './adapters.js';
+import { loadConfig, type Config } from './config.js';
+import { handleApi, prepareDeps, type AppDeps } from './http.js';
+import { MemoryStore, createFirestoreStore } from './store.js';
 
 export async function createDeps(overrides: Partial<AppDeps> & { config?: Config } = {}): Promise<AppDeps> {
   const config = overrides.config ?? loadConfig();

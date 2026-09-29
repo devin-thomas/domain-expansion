@@ -66,6 +66,7 @@ describe('portability and vault', () => {
     expect(open(sealed, key, aad)).toBe('gemini-user-key');
     expect(() => open(sealed, key, credentialAad('test', 'demo', 'user-b'))).toThrow();
     expect(() => open({ ...sealed, tag: Buffer.from('nope').toString('base64') }, key, aad)).toThrow();
+    expect(() => open({ ...sealed, tag: Buffer.from(sealed.tag, 'base64').subarray(0, 4).toString('base64') }, key, aad)).toThrow();
 
     const store = new MemoryStore();
     const config = loadConfig({

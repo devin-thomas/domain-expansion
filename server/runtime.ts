@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { waitUntil } from '@vercel/functions';
-import { createDeps } from './createApp';
-import { handleApi } from './http';
+import { createDeps } from './createApp.js';
+import { handleApi } from './http.js';
 
 let depsPromise: ReturnType<typeof createDeps> | undefined;
 

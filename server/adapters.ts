@@ -1,5 +1,5 @@
-import type { AiPort, IdentityDirectory, MailPort } from './ports';
-import type { Config } from './config';
+import type { AiPort, IdentityDirectory, MailPort } from './ports.js';
+import type { Config } from './config.js';
 
 const MAIL_REQUEST_TIMEOUT_MS = 8_000;
 

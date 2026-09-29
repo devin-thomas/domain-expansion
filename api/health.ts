@@ -1,1 +1,1 @@
-export { handleProductionRequest as default } from '../server/runtime';
+export { handleProductionRequest as default } from '../server/runtime.js';

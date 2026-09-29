@@ -50,7 +50,7 @@ export function seal(plaintext: string, key: Buffer, keyId: string, aad: string)
 }
 
 export function open(sealed: SealedSecret, key: Buffer, aad: string): string {
-  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(sealed.nonce, 'base64'));
+  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(sealed.nonce, 'base64'), { authTagLength: 16 });
   decipher.setAAD(Buffer.from(aad));
   decipher.setAuthTag(Buffer.from(sealed.tag, 'base64'));
   const plain = Buffer.concat([decipher.update(Buffer.from(sealed.ciphertext, 'base64')), decipher.final()]);

@@ -15,7 +15,7 @@ import {
   reminderSchema,
   settingsSchema,
   stableStringify,
-} from './domain';
+} from './domain.js';
 
 export type BackupFormat = 'json' | 'yaml' | 'xlsx' | 'csv' | 'sql';
 export type ConflictPolicy = 'skip' | 'replace' | 'merge';

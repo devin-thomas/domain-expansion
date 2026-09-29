@@ -1,9 +1,9 @@
-import { ApiError } from '../shared/errors';
-import type { Actor } from './auth';
-import { requireRecent, requireSession } from './auth';
-import type { Config } from './config';
-import { credentialAad, open, seal, type SealedSecret } from './crypto';
-import type { DocStore } from './store';
+import { ApiError } from '../shared/errors.js';
+import type { Actor } from './auth.js';
+import { requireRecent, requireSession } from './auth.js';
+import type { Config } from './config.js';
+import { credentialAad, open, seal, type SealedSecret } from './crypto.js';
+import type { DocStore } from './store.js';
 
 export interface CredentialDoc extends SealedSecret {
   provider: 'gemini';

@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { SCOPES, type Scope } from '../shared/domain';
-import { ApiError, errorBody } from '../shared/errors';
-import { openApiDocument } from '../shared/openapi';
+import { SCOPES, type Scope } from '../shared/domain.js';
+import { ApiError, errorBody } from '../shared/errors.js';
+import { openApiDocument } from '../shared/openapi.js';
 import {
   decideRequest,
   listRequests,
@@ -12,13 +12,13 @@ import {
   retryNotification,
   setMembership,
   submitAccessRequest,
-} from './admission';
-import { authenticate, bootstrapOwner, issuePat, memberPath, publicToken, requireRecent, requireSession, signTestToken, tokenPath, type MemberDoc, type TokenDoc } from './auth';
-import type { Config } from './config';
-import { deleteCredential, getCredentialStatus, putCredential } from './credentials';
-import { sha256Hex } from './crypto';
-import { extractDrafts } from './extract';
-import type { AiPort, IdentityDirectory, LogSink, MailPort } from './ports';
+} from './admission.js';
+import { authenticate, bootstrapOwner, issuePat, memberPath, publicToken, requireRecent, requireSession, signTestToken, tokenPath, type MemberDoc, type TokenDoc } from './auth.js';
+import type { Config } from './config.js';
+import { deleteCredential, getCredentialStatus, putCredential } from './credentials.js';
+import { sha256Hex } from './crypto.js';
+import { extractDrafts } from './extract.js';
+import type { AiPort, IdentityDirectory, LogSink, MailPort } from './ports.js';
 import {
   batchCreate,
   commitImport,
@@ -34,8 +34,8 @@ import {
   summarize,
   updateIntegration,
   userToday,
-} from './portfolio';
-import type { DocStore } from './store';
+} from './portfolio.js';
+import type { DocStore } from './store.js';
 
 export interface AppDeps {
   store: DocStore;

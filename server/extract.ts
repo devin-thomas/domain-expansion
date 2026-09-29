@@ -1,14 +1,14 @@
-import { AI_ATTEMPT_TIMEOUT_MS, AI_DRAFT_MAX, AI_INPUT_MAX_BYTES, AI_TOTAL_TIMEOUT_MS, materializeDraft, providerResultSchema } from '../shared/ai';
-import { localDateInTimeZone } from '../shared/domain';
-import { ApiError } from '../shared/errors';
-import type { Actor } from './auth';
-import { requireSession } from './auth';
-import type { Config } from './config';
-import { sha256Hex } from './crypto';
-import { resolveAiKey } from './credentials';
-import type { AiGenerateResult, AiPort } from './ports';
-import type { DocStore } from './store';
-import { DEFAULT_SETTINGS } from '../shared/domain';
+import { AI_ATTEMPT_TIMEOUT_MS, AI_DRAFT_MAX, AI_INPUT_MAX_BYTES, AI_TOTAL_TIMEOUT_MS, materializeDraft, providerResultSchema } from '../shared/ai.js';
+import { localDateInTimeZone } from '../shared/domain.js';
+import { ApiError } from '../shared/errors.js';
+import type { Actor } from './auth.js';
+import { requireSession } from './auth.js';
+import type { Config } from './config.js';
+import { sha256Hex } from './crypto.js';
+import { resolveAiKey } from './credentials.js';
+import type { AiGenerateResult, AiPort } from './ports.js';
+import type { DocStore } from './store.js';
+import { DEFAULT_SETTINGS } from '../shared/domain.js';
 
 const SYSTEM = [
   'Extract website domain renewal facts from the user text.',

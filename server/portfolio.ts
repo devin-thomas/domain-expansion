@@ -22,13 +22,13 @@ import {
   stableStringify,
   summarizeSpending,
   toPublicDomain,
-} from '../shared/domain';
-import { contentHash as hashValue, parseImport, publicFieldsOf, serializeBackup, type BackupFormat, type ConflictPolicy } from '../shared/backup';
-import { ApiError } from '../shared/errors';
-import type { Actor } from './auth';
-import { requireScope, requireSession } from './auth';
-import { randomId, sha256Hex } from './crypto';
-import type { DocStore, Tx } from './store';
+} from '../shared/domain.js';
+import { contentHash as hashValue, parseImport, publicFieldsOf, serializeBackup, type BackupFormat, type ConflictPolicy } from '../shared/backup.js';
+import { ApiError } from '../shared/errors.js';
+import type { Actor } from './auth.js';
+import { requireScope, requireSession } from './auth.js';
+import { randomId, sha256Hex } from './crypto.js';
+import type { DocStore, Tx } from './store.js';
 
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 const PREVIEW_TTL_MS = 15 * 60 * 1000;
@@ -668,6 +668,6 @@ function readCursor(token: string, secret: string): { uid: string; filters: stri
 
 export async function userToday(store: DocStore, actor: Actor, now: Date): Promise<string> {
   const settings = await loadSettings(store, actor.uid);
-  const { localDateInTimeZone } = await import('../shared/domain');
+  const { localDateInTimeZone } = await import('../shared/domain.js');
   return localDateInTimeZone(settings.timezone, now);
 }

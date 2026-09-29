@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { currencySchema, isValidDateOnly, nextOccurrence, renewalIntentSchema } from './domain';
+import { currencySchema, isValidDateOnly, nextOccurrence, renewalIntentSchema } from './domain.js';
 
 export const AI_INPUT_MAX_BYTES = 8 * 1024;
 export const AI_DRAFT_MAX = 25;

@@ -1,10 +1,10 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { Scope } from '../shared/domain';
-import { SCOPES } from '../shared/domain';
-import { ApiError } from '../shared/errors';
-import type { Config } from './config';
-import { randomToken, safeEqualHex, sha256Hex } from './crypto';
-import type { DocStore } from './store';
+import type { Scope } from '../shared/domain.js';
+import { SCOPES } from '../shared/domain.js';
+import { ApiError } from '../shared/errors.js';
+import type { Config } from './config.js';
+import { randomToken, safeEqualHex, sha256Hex } from './crypto.js';
+import type { DocStore } from './store.js';
 
 export interface Actor {
   uid: string;

@@ -1,10 +1,10 @@
-import { ApiError } from '../shared/errors';
-import type { Actor } from './auth';
-import { memberPath, requireAdmin, requireRecent, type MemberDoc } from './auth';
-import type { Config } from './config';
-import { randomId, sha256Hex } from './crypto';
-import type { IdentityDirectory, MailPort } from './ports';
-import type { DocStore } from './store';
+import { ApiError } from '../shared/errors.js';
+import type { Actor } from './auth.js';
+import { memberPath, requireAdmin, requireRecent, type MemberDoc } from './auth.js';
+import type { Config } from './config.js';
+import { randomId, sha256Hex } from './crypto.js';
+import type { IdentityDirectory, MailPort } from './ports.js';
+import type { DocStore } from './store.js';
 
 interface AccessRequest {
   id: string;
