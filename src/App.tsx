@@ -412,6 +412,12 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
   const [renewalDate, setRenewalDate] = useState(initial?.expirationDate ?? '');
   const [cost, setCost] = useState(initial ? minorToField(initial.renewalCostMinor, initial.currency) : '');
   const [currency, setCurrency] = useState<Currency>(initial?.currency ?? settings.defaultCurrency);
+  const currencyCostDrafts = useRef(new Map<Currency, { cost: string; registrationCost: string }>([
+    [initial?.currency ?? settings.defaultCurrency, {
+      cost: initial ? minorToField(initial.renewalCostMinor, initial.currency) : '',
+      registrationCost: initial ? minorToField(initial.registrationCostMinor, initial.currency) : '',
+    }],
+  ]));
   const [intent, setIntent] = useState<RenewalIntent>(initial?.renewalIntent ?? 'renew');
   const [billingDate, setBillingDate] = useState(initial?.billingDate ?? '');
   const [registrationDate, setRegistrationDate] = useState(initial?.registrationDate ?? '');
@@ -568,7 +574,17 @@ function CaptureDialog({ settings, initial, onClose, onSaved, onOpenExisting }: 
             <div className="grid grid-cols-[1fr_8rem] gap-2">
               <Field label="Renewal cost"><input className="field" data-testid="quick-add-cost" inputMode="decimal" value={cost} onChange={(event) => { mark(); setCost(event.target.value); }} placeholder="Unknown if blank" /></Field>
               <Field label="Currency">
-                <select className="field" data-testid="quick-add-currency" value={currency} onChange={(event) => { mark(); setCurrency(event.target.value as Currency); setCost(''); setRegistrationCost(''); setAckCurrency(false); }}>
+                <select className="field" data-testid="quick-add-currency" value={currency} onChange={(event) => {
+                  const nextCurrency = event.target.value as Currency;
+                  if (nextCurrency === currency) return;
+                  currencyCostDrafts.current.set(currency, { cost, registrationCost });
+                  const nextCosts = currencyCostDrafts.current.get(nextCurrency);
+                  mark();
+                  setCurrency(nextCurrency);
+                  setCost(nextCosts?.cost ?? '');
+                  setRegistrationCost(nextCosts?.registrationCost ?? '');
+                  setAckCurrency(false);
+                }}>
                   {CURRENCIES.map((item) => <option key={item}>{item}</option>)}
                 </select>
               </Field>

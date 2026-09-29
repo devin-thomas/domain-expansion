@@ -202,6 +202,47 @@ test('currency change explicitly clears existing costs', async ({ page }) => {
   await expect(page.getByLabel('Registration cost')).toHaveValue('');
 });
 
+test('reverting a currency change restores its cost drafts and cancel keeps saved amounts', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('test-sign-in').click();
+  await page.getByTestId('open-add').click();
+  await page.getByTestId('quick-add-domain').fill('currency-revert.example');
+  await page.getByTestId('quick-add-date').fill('2027-07-12');
+  await page.getByTestId('quick-add-cost').fill('15.00');
+  await page.getByTestId('more-details').click();
+  await page.getByLabel('Registration cost').fill('8.00');
+  await page.getByTestId('quick-add-save').click();
+  await page.getByTestId('nav-domains').click();
+  await page.getByRole('button', { name: /currency-revert\.example/ }).first().click();
+
+  await page.getByTestId('quick-add-currency').selectOption('EUR');
+  await expect(page.getByTestId('quick-add-cost')).toHaveValue('');
+  await expect(page.getByText(/Changing currency clears the stored amounts/)).toBeVisible();
+  await page.getByTestId('more-details').click();
+  await expect(page.getByLabel('Registration cost')).toHaveValue('');
+  await page.getByLabel('Registration cost').fill('9.00');
+
+  await page.getByTestId('quick-add-currency').selectOption('USD');
+  await expect(page.getByText(/Changing currency clears the stored amounts/)).toHaveCount(0);
+  await expect(page.getByTestId('quick-add-cost')).toHaveValue('15.00');
+  await expect(page.getByLabel('Registration cost')).toHaveValue('8.00');
+  await page.getByTestId('quick-add-save').click();
+
+  await page.getByRole('button', { name: /currency-revert\.example/ }).first().click();
+  await expect(page.getByTestId('quick-add-cost')).toHaveValue('15.00');
+  await page.getByTestId('more-details').click();
+  await expect(page.getByLabel('Registration cost')).toHaveValue('8.00');
+
+  await page.getByTestId('quick-add-currency').selectOption('EUR');
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: /currency-revert\.example/ }).first().click();
+  await expect(page.getByTestId('quick-add-currency')).toHaveValue('USD');
+  await expect(page.getByTestId('quick-add-cost')).toHaveValue('15.00');
+  await page.getByTestId('more-details').click();
+  await expect(page.getByLabel('Registration cost')).toHaveValue('8.00');
+});
+
 test('capture protects AI drafts and restores keyboard focus to its opener', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('test-sign-in').click();
