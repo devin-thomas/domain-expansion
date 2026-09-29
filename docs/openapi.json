@@ -664,7 +664,14 @@
         },
         "responses": {
           "200": {
-            "description": "Updated record with its new revision. GET returns the corresponding ETag."
+            "description": "Updated",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "412": {
             "description": "Stale revision"

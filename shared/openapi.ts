@@ -116,7 +116,7 @@ export function openApiDocument() {
           summary: 'Partial update. Requires If-Match.',
           parameters: [{ name: 'If-Match', in: 'header', required: true, schema: { type: 'string', pattern: '^(?:W/)?"[0-9]+"$|^[0-9]+$' } }],
           requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/DomainPatch' } } } },
-          responses: { '200': { description: 'Updated record with its new revision. GET returns the corresponding ETag.' }, '412': { description: 'Stale revision' }, '422': { description: 'Invalid domain fields' }, '428': { description: 'Missing If-Match' } },
+          responses: { '200': { description: 'Updated', headers: { ETag: { schema: { type: 'string' } } } }, '412': { description: 'Stale revision' }, '422': { description: 'Invalid domain fields' }, '428': { description: 'Missing If-Match' } },
         },
         delete: { security: [{ bearer: [] }], summary: 'Permanent delete. Requires domains:delete and If-Match.', responses: { '204': { description: 'Deleted' } } },
       },

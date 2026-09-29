@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { SCOPES, type Scope } from '../shared/domain.js';
 import { ApiError, errorBody } from '../shared/errors.js';
 import { openApiDocument } from '../shared/openapi.js';
+import { FORWARDED_IF_MATCH_HEADER } from '../middleware.js';
 import {
   decideRequest,
   listRequests,
@@ -99,10 +100,7 @@ export async function handleApi(req: IncomingMessage & { body?: unknown }, res: 
       throw new ApiError(403, 'forbidden', 'This origin is not allowed');
     }
     const result = await dispatch(req, url, deps);
-    // Vercel compares If-Match with a response ETag after the write has committed.
-    // Return the new revision in the body; GET supplies its validator for the next write.
-    const responseEtag = req.headers['if-match'] && !['GET', 'HEAD'].includes(req.method || '') ? undefined : result.etag;
-    send(res, result.status, result.body, requestId, responseEtag, result.retryAfter);
+    send(res, result.status, result.body, requestId, result.etag, result.retryAfter);
     if (background && req.method === 'POST' && ['/api/access/request', '/api/auth/email-link'].includes(url.pathname) && result.status < 300) {
       background(retryDueNotifications(deps.store, deps.config, deps.mail, deps.now()).catch(() => {
         deps.log('error', 'admission worker failed', { requestId });
@@ -186,13 +184,13 @@ async function dispatch(req: IncomingMessage & { body?: unknown }, url: URL, dep
   if (method === 'GET' && path === '/api/v1/export') return exportData(deps.store, actor, url.searchParams);
   const integration = path.match(/^\/api\/v1\/domains\/([^/]+)\/integrations$/);
   if (integration && method === 'POST') {
-    return updateIntegration(deps.store, actor, integration[1], await readBody(req), header(req, 'if-match'), now.toISOString());
+    return updateIntegration(deps.store, actor, integration[1], await readBody(req), ifMatchHeader(req), now.toISOString());
   }
   const one = path.match(/^\/api\/v1\/domains\/([^/]+)$/);
   if (one && !['batch', 'preview', 'commit'].includes(one[1])) {
     if (method === 'GET') return getDomain(deps.store, actor, one[1]);
-    if (method === 'PATCH') return patchDomain(deps.store, actor, one[1], await readBody(req), header(req, 'if-match'), now.toISOString());
-    if (method === 'DELETE') return deleteDomain(deps.store, actor, one[1], header(req, 'if-match'));
+    if (method === 'PATCH') return patchDomain(deps.store, actor, one[1], await readBody(req), ifMatchHeader(req), now.toISOString());
+    if (method === 'DELETE') return deleteDomain(deps.store, actor, one[1], ifMatchHeader(req));
   }
   if (method === 'GET' && path === '/api/tokens') return listTokens(deps, actor);
   if (method === 'POST' && path === '/api/tokens') return createToken(deps, actor, await readBody(req), now);
@@ -200,7 +198,7 @@ async function dispatch(req: IncomingMessage & { body?: unknown }, url: URL, dep
   if (revoke && method === 'POST') return revokeToken(deps, actor, revoke[1], now);
   if (path === '/api/credentials/gemini') {
     if (method === 'GET') return getCredentialStatus(deps.store, deps.config, actor);
-    if (method === 'PUT') return putCredential(deps.store, deps.config, actor, await readBody(req), header(req, 'if-match'), now);
+    if (method === 'PUT') return putCredential(deps.store, deps.config, actor, await readBody(req), ifMatchHeader(req), now);
     if (method === 'DELETE') return deleteCredential(deps.store, deps.config, actor, now);
   }
   if (method === 'POST' && path === '/api/ai/extract') return extractDrafts(deps.store, deps.config, deps.ai, actor, await readBody(req), now);
@@ -286,6 +284,10 @@ async function revokeToken(deps: AppDeps, actor: Parameters<typeof requireSessio
 function header(req: IncomingMessage, name: string): string | undefined {
   const value = req.headers[name];
   return Array.isArray(value) ? value[0] : value;
+}
+
+function ifMatchHeader(req: IncomingMessage): string | undefined {
+  return header(req, 'if-match') ?? header(req, FORWARDED_IF_MATCH_HEADER);
 }
 
 function clientIp(req: IncomingMessage): string {

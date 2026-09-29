@@ -28,6 +28,7 @@ declare global {
           initTokenClient: (config: {
             client_id: string;
             scope: string;
+            include_granted_scopes: boolean;
             callback: (response: TokenResponse) => void;
             error_callback?: (error: { type: string }) => void;
           }) => { requestAccessToken: (options?: { prompt?: string }) => void };
@@ -64,6 +65,7 @@ export async function connectGoogle(action: GoogleAction): Promise<string> {
     const client = window.google!.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: SCOPES[action],
+      include_granted_scopes: false,
       callback: (response) => {
         if (response.access_token) resolve(response.access_token);
         else reject(new Error('Google did not grant access for this integration.'));
