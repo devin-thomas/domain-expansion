@@ -14,7 +14,7 @@ try {
   const probe = spawnSync(process.execPath, ['--input-type=module', '-e', `
     import { pathToFileURL } from 'node:url';
     const root = process.argv[1];
-    const entry = await import(pathToFileURL(root + '/api/health.js'));
+    const entry = await import(pathToFileURL(root + '/api/index.js'));
     if (typeof entry.default !== 'function') throw new Error('Missing production handler');
     const { createFirestoreStore } = await import(pathToFileURL(root + '/server/store.js'));
     await createFirestoreStore();
