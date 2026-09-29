@@ -57,6 +57,11 @@ const PUBLIC_KEYS = [
   'reminders',
 ] as const;
 
+const XLSX_DOMAIN_COLUMNS = 17;
+const XLSX_REMINDER_COLUMNS = 4;
+const XLSX_SETTINGS_COLUMNS = 2;
+const XLSX_SETTINGS_MAX_ROWS = 9;
+
 export function publicFieldsOf(record: DomainRecord | PublicDomain): CreateDomainInput {
   return {
     name: record.name,
@@ -458,6 +463,12 @@ function parseXlsx(bytes: Uint8Array): ParsedImport {
   if (!book.SheetNames.includes('Domains') || !book.SheetNames.includes('Reminders') || !book.SheetNames.includes('Settings')) {
     throw new DomainInputError([{ path: 'file', message: 'Workbook must contain Domains, Reminders, and Settings sheets' }]);
   }
+  assertWorksheetDimensions(book.Sheets.Domains, 'Domains', IMPORT_MAX_RECORDS + 1, XLSX_DOMAIN_COLUMNS);
+  assertWorksheetDimensions(book.Sheets.Reminders, 'Reminders', IMPORT_MAX_RECORDS * 16 + 1, XLSX_REMINDER_COLUMNS);
+  assertWorksheetDimensions(book.Sheets.Settings, 'Settings', XLSX_SETTINGS_MAX_ROWS, XLSX_SETTINGS_COLUMNS);
+  rejectWorksheetFormulas(book.Sheets.Domains);
+  rejectWorksheetFormulas(book.Sheets.Reminders);
+  rejectWorksheetFormulas(book.Sheets.Settings);
   const domainsSheet = XLSX.utils.sheet_to_json<Record<string, unknown>>(book.Sheets.Domains, { raw: true, defval: null });
   const reminders = XLSX.utils.sheet_to_json<Record<string, unknown>>(book.Sheets.Reminders, { raw: true, defval: null });
   const meta = XLSX.utils.sheet_to_json<{ key: string; value: unknown }>(book.Sheets.Settings, { raw: true, defval: null });
@@ -489,6 +500,31 @@ function parseXlsx(bytes: Uint8Array): ParsedImport {
   }
   const settings = settingsFromMeta(meta);
   return { format: 'xlsx', fullFidelity: true, schemaVersion: SCHEMA_VERSION, domains, settings, warnings: [] };
+}
+
+function assertWorksheetDimensions(sheet: XLSX.WorkSheet, name: string, maxRows: number, maxColumns: number): void {
+  const reference = sheet['!ref'];
+  if (!reference) return;
+  const range = XLSX.utils.decode_range(reference);
+  const coordinates = [range.s.r, range.s.c, range.e.r, range.e.c];
+  if (
+    coordinates.some((coordinate) => !Number.isSafeInteger(coordinate) || coordinate < 0) ||
+    range.s.r !== 0 || range.s.c !== 0 || range.e.r < range.s.r || range.e.c < range.s.c
+  ) {
+    throw new DomainInputError([{ path: name, message: 'Worksheet range is invalid' }]);
+  }
+  if (range.e.r + 1 > maxRows || range.e.c + 1 > maxColumns) {
+    throw new DomainInputError([{ path: name, message: 'Worksheet dimensions exceed supported limits' }]);
+  }
+}
+
+function rejectWorksheetFormulas(sheet: XLSX.WorkSheet): void {
+  for (const [address, cell] of Object.entries(sheet)) {
+    if (address.startsWith('!') || !cell || typeof cell !== 'object') continue;
+    if ('f' in cell && cell.f !== undefined) {
+      throw new DomainInputError([{ path: address, message: 'Spreadsheet formulas are not imported' }]);
+    }
+  }
 }
 
 function rejectFormulaRow(row: Record<string, unknown>): void {

@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import * as XLSX from 'xlsx';
 import { parseImport, serializeBackup, zipDeclaredUncompressedSize } from '../../shared/backup';
 import { buildRecordFromCreate, DEFAULT_SETTINGS, type DomainRecord } from '../../shared/domain';
 import { credentialAad, open, seal } from '../../server/crypto';
@@ -49,6 +50,31 @@ describe('portability and vault', () => {
     }
     expect(() => parseImport('sql', 'DROP TABLE domains;')).toThrow(/never executed/);
     expect(() => parseImport('json', JSON.stringify({ format: 'domain-expansion-backup', schemaVersion: 1, domains: [] }))).toThrow(/schema/);
+  });
+
+  it('neutralizes spreadsheet formulas in CSV exports and rejects actual XLSX formulas', () => {
+    const csv = serializeBackup([record], 'csv');
+    expect(String(csv.body)).toContain("'=cmd");
+
+    const original = serializeBackup([record], 'xlsx', DEFAULT_SETTINGS);
+    const workbook = XLSX.read(original.body, { type: 'array', cellFormula: true });
+    workbook.Sheets.Domains.P2 = { t: 'n', f: '1+1', v: 2 };
+    const crafted = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+    const reloaded = XLSX.read(crafted, { type: 'array', cellFormula: true });
+    expect(reloaded.Sheets.Domains.P2.f).toBe('1+1');
+
+    expect(() => parseImport('xlsx', new Uint8Array(crafted))).toThrow(/formulas are not imported/i);
+  });
+
+  it('rejects sparse XLSX ranges beyond supported worksheet dimensions', () => {
+    const original = serializeBackup([record], 'xlsx', DEFAULT_SETTINGS);
+    const workbook = XLSX.read(original.body, { type: 'array' });
+    workbook.Sheets.Domains['!ref'] = 'A1:R102';
+    const crafted = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+    const reloaded = XLSX.read(crafted, { type: 'array' });
+    expect(reloaded.Sheets.Domains['!ref']).toBe('A1:R102');
+
+    expect(() => parseImport('xlsx', new Uint8Array(crafted))).toThrow(/dimensions exceed supported limits/i);
   });
 
   it('rejects spreadsheet expansion bombs', () => {
