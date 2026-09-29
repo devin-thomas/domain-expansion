@@ -4,7 +4,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": { "api/**/*.ts": { "maxDuration": 60 } },
-  "crons": [{ "path": "/api/internal/notifications/retry", "schedule": "45 14 * * *" }],
+  "crons": [{ "path": "/api/internal/notifications/retry", "schedule": "0 12 * * *" }],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }

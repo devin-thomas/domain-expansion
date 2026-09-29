@@ -1,7 +1,7 @@
 import { retryDueNotifications } from './admission.js';
 import type { AppDeps } from './http.js';
 
-export const RETRY_CRON_SCHEDULE = '45 14 * * *';
+export const RETRY_CRON_SCHEDULE = '0 12 * * *';
 
 export interface RetryRun {
   requestId: string;
