@@ -49,14 +49,20 @@ export async function bootstrapOwner(store: DocStore, config: Config, nowIso: st
   if (!config.ownerUid) return;
   await store.transaction(async (tx) => {
     const existing = await tx.get<MemberDoc>(memberPath(config.ownerUid!));
-    if (existing) return;
-    tx.set(memberPath(config.ownerUid!), {
-      status: 'approved',
-      role: 'admin',
-      email: config.ownerEmail,
-      createdAt: nowIso,
-      bootstrap: true,
-    } satisfies MemberDoc);
+    const email = (existing?.email ?? config.ownerEmail)?.trim().toLowerCase();
+    const emailPath = email ? `memberEmails/${sha256Hex(email)}` : null;
+    const emailIndex = emailPath ? await tx.get<{ uid: string }>(emailPath) : null;
+    if (emailIndex && emailIndex.uid !== config.ownerUid) throw new Error('Configured owner email belongs to another member');
+    if (!existing) {
+      tx.set(memberPath(config.ownerUid!), {
+        status: 'approved',
+        role: 'admin',
+        email: email ?? null,
+        createdAt: nowIso,
+        bootstrap: true,
+      } satisfies MemberDoc);
+    }
+    if (emailPath && !emailIndex) tx.set(emailPath, { uid: config.ownerUid });
   });
 }
 

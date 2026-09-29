@@ -1,9 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import { createGeminiPort, resolveFirebaseUser } from '../../server/adapters';
 import { retryDueNotifications, submitAccessRequest } from '../../server/admission';
+import { bootstrapOwner } from '../../server/auth';
+import { sha256Hex } from '../../server/crypto';
 import { call, session, startHarness } from '../helpers';
 
 describe('durable public mail work', () => {
+  it('sends the configured owner a link after first bootstrap and repeated initialization', async () => {
+    const harness = await startHarness();
+    try {
+      await bootstrapOwner(harness.deps.store, harness.config, '2026-03-01T15:00:00Z');
+      await harness.deps.store.transaction(async (tx) => {
+        tx.delete(`memberEmails/${sha256Hex('owner@example.com')}`);
+      });
+      await bootstrapOwner(harness.deps.store, harness.config, '2026-03-01T15:00:00Z');
+      const requested = await call(harness.base, undefined, 'POST', '/api/auth/email-link', { body: { email: 'owner@example.com' } });
+      expect(requested.status).toBe(202);
+      const drained = await call(harness.base, 'retry-secret', 'POST', '/api/internal/notifications/retry', { body: {} });
+      expect(drained.status).toBe(200);
+      expect(harness.mail.signIns).toEqual(['owner@example.com']);
+    } finally {
+      await harness.close();
+    }
+  });
+
   it('returns the same access response before delivery and drains its durable outbox later', async () => {
     const harness = await startHarness();
     try {
