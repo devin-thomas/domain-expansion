@@ -36,6 +36,8 @@ Options:
   --revision N         If-Match revision for update and delete
   --idempotency-key K  Reuse this key when retrying a write
   --name --registrar --renewal-date --cost --currency --intent
+  --purchase-email EMAIL      Optional purchase email; empty value clears it
+  --payment-method TEXT       Plain-text payment description; empty value clears it
   --permanent --yes    Required together for unattended permanent delete
   --format json|yaml|xlsx|csv|sql
   --output FILE
@@ -48,15 +50,22 @@ Options:
 function parseArgs(argv: string[]) {
   const flags = new Map<string, string | boolean>();
   const positionals: string[] = [];
+  const booleanFlags = new Set(['json', 'permanent', 'yes', 'dry-run', 'help', 'version']);
+  const valueFlags = new Set([
+    'endpoint', 'revision', 'idempotency-key', 'name', 'registrar', 'renewal-date',
+    'cost', 'currency', 'intent', 'purchase-email', 'payment-method', 'format',
+    'output', 'policy', 'archived', 'q', 'token',
+  ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--') continue;
     if (arg.startsWith('--')) {
       const key = arg.slice(2);
-      if (['json', 'permanent', 'yes', 'dry-run', 'help', 'version'].includes(key)) flags.set(key, true);
+      if (booleanFlags.has(key)) flags.set(key, true);
       else {
+        if (!valueFlags.has(key)) fail(`Unknown option --${key}`);
         const value = argv[i + 1];
-        if (!value || value.startsWith('--')) fail(`Missing value for --${key}`);
+        if (value === undefined || value.startsWith('--')) fail(`Missing value for --${key}`);
         flags.set(key, value);
         i += 1;
       }
@@ -135,6 +144,8 @@ function domainBody(flags: Map<string, string | boolean>, partial = false) {
   }
   if (flags.has('currency')) body.currency = flags.get('currency');
   if (flags.has('intent')) body.renewalIntent = flags.get('intent');
+  if (flags.has('purchase-email')) body.purchaseEmail = flags.get('purchase-email') === '' ? null : flags.get('purchase-email');
+  if (flags.has('payment-method')) body.paymentMethod = flags.get('payment-method') === '' ? null : flags.get('payment-method');
   if (!partial && !body.name) fail('add requires --name');
   if (!partial && !body.expirationDate) fail('add requires --renewal-date');
   return body;
