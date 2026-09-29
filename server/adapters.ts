@@ -120,11 +120,11 @@ export function createGeminiPort(): AiPort {
       const timer = setTimeout(() => controller.abort(), request.timeoutMs);
       try {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(request.model)}:generateContent?key=${encodeURIComponent(request.apiKey)}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(request.model)}:generateContent`,
           {
             method: 'POST',
             signal: controller.signal,
-            headers: { 'content-type': 'application/json' },
+            headers: { 'content-type': 'application/json', 'x-goog-api-key': request.apiKey },
             body: JSON.stringify({
               systemInstruction: { parts: [{ text: request.system }] },
               contents: [{ role: 'user', parts: [{ text: request.user }] }],
@@ -163,6 +163,7 @@ export function createGeminiPort(): AiPort {
         );
         if (!response.ok) {
           const retryAfter = parseRetryAfter(response.headers.get('retry-after'));
+          if (response.status === 408) return { ok: false, kind: 'timeout', status: 408 };
           if (response.status === 401 || response.status === 403) return { ok: false, kind: 'auth', status: response.status };
           if (response.status === 429) return { ok: false, kind: 'throttle', status: 429, retryAfterMs: retryAfter && retryAfter > 0 ? retryAfter : undefined };
           if (response.status === 402 || response.status === 400) {
@@ -172,9 +173,34 @@ export function createGeminiPort(): AiPort {
           if (response.status >= 500) return { ok: false, kind: 'upstream', status: response.status };
           return { ok: false, kind: 'bad', status: response.status };
         }
-        const json = (await response.json()) as { candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[] };
-        const text = json.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || '';
-        const truncated = json.candidates?.[0]?.finishReason === 'MAX_TOKENS';
+        let json: unknown;
+        try {
+          json = await response.json();
+        } catch (error) {
+          if (error instanceof SyntaxError) return { ok: false, kind: 'bad', status: 502 };
+          throw error;
+        }
+        if (!isRecord(json)) return { ok: false, kind: 'bad', status: 502 };
+        const candidates = json.candidates;
+        if (candidates !== undefined && !Array.isArray(candidates)) return { ok: false, kind: 'bad', status: 502 };
+        const candidate: unknown = Array.isArray(candidates) ? candidates[0] : undefined;
+        if (candidate === undefined) return { ok: true, text: '', truncated: false };
+        if (!isRecord(candidate)) return { ok: false, kind: 'bad', status: 502 };
+        const content = candidate.content;
+        if (content !== undefined && !isRecord(content)) return { ok: false, kind: 'bad', status: 502 };
+        const parts = isRecord(content) ? content.parts : undefined;
+        if (parts !== undefined && !Array.isArray(parts)) return { ok: false, kind: 'bad', status: 502 };
+        let text = '';
+        if (Array.isArray(parts)) {
+          for (const part of parts) {
+            if (!isRecord(part)) return { ok: false, kind: 'bad', status: 502 };
+            if (part.text !== undefined && typeof part.text !== 'string') return { ok: false, kind: 'bad', status: 502 };
+            if (typeof part.text === 'string') text += part.text;
+          }
+        }
+        const finishReason = candidate.finishReason;
+        if (finishReason !== undefined && typeof finishReason !== 'string') return { ok: false, kind: 'bad', status: 502 };
+        const truncated = finishReason === 'MAX_TOKENS';
         return { ok: true, text, truncated };
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') return { ok: false, kind: 'timeout', status: 504 };
@@ -184,6 +210,10 @@ export function createGeminiPort(): AiPort {
       }
     },
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function scrubLog(value: unknown): unknown {

@@ -51,6 +51,11 @@ describe('AI extraction failure contract', () => {
       expectedCode: 'ai_invalid',
     },
     {
+      label: 'missing required schema fields',
+      result: { ok: true as const, text: '{"drafts":[{"name":"private-provider-payload"}]}', truncated: false },
+      expectedCode: 'ai_invalid',
+    },
+    {
       label: 'truncated output',
       result: { ok: true as const, text: '{"drafts":[]}', truncated: true },
       expectedCode: 'ai_truncated',
@@ -75,7 +80,7 @@ describe('AI extraction failure contract', () => {
     }
   });
 
-  it('requires current consent and a caller-owned key, including after key removal, without using the owner key', async () => {
+  it('requires explicit consent and a caller-owned key, including after key removal, without using the owner key', async () => {
     const harness = await startHarness();
     try {
       const member = await session(harness.base, { uid: 'ai-no-key-user', email: 'no-key@example.com' });
@@ -99,6 +104,54 @@ describe('AI extraction failure contract', () => {
       harness.setAi(async () => ({ ok: true, text: JSON.stringify({ drafts: [] }), truncated: false }));
       expect((await call(harness.base, owner, 'POST', '/api/ai/extract', { body: { text: 'owner-only.example' } })).status).toBe(200);
       expect(harness.aiCalls.map(({ apiKey }) => apiKey)).toEqual(['owner-gemini-key-value']);
+    } finally {
+      await harness.close();
+    }
+  });
+
+  it('returns multiple incomplete or ambiguous drafts with labeled proposals and no writes', async () => {
+    const harness = await startHarness({ now: new Date('2026-03-05T01:00:00Z') });
+    try {
+      const member = await session(harness.base, { uid: 'ai-batch-user', email: 'batch@example.com' });
+      expect((await saveCredential(harness, member)).status).toBe(200);
+      const unknown = {
+        name: null,
+        registrar: null,
+        expirationMonth: null,
+        expirationDay: null,
+        expirationYear: null,
+        expirationYearInferred: false,
+        billingDate: null,
+        renewalCostMinor: null,
+        currency: null,
+        renewalIntent: null,
+        warnings: [],
+      };
+      harness.setAi(async () => ({
+        ok: true,
+        text: JSON.stringify({ drafts: [
+          { ...unknown, name: 'local-date.example', expirationMonth: 3, expirationDay: 4, expirationYearInferred: true, renewalCostMinor: 0, currency: 'USD' },
+          { ...unknown, name: 'ambiguous.example', warnings: ['03/04 and the currency symbol are ambiguous. Confirm both.'] },
+          unknown,
+        ] }),
+        truncated: false,
+      }));
+
+      const result = await call(harness.base, member, 'POST', '/api/ai/extract', {
+        body: { text: 'Three domains, one March 4 renewal, one ambiguous 03/04 for $12, and one incomplete note.', timezone: 'America/Chicago' },
+      });
+
+      expect(result.status).toBe(200);
+      expect(result.body.drafts).toHaveLength(3);
+      expect(result.body.drafts[0]).toMatchObject({ expirationDate: '2026-03-04', billingDate: null, renewalCostMinor: 0, currency: 'USD', suggestedCurrency: null });
+      expect(result.body.drafts[0].proposals).toEqual([{ field: 'expirationDate', reason: expect.stringMatching(/year inferred.*confirm/i) }]);
+      expect(result.body.drafts[1]).toMatchObject({ expirationDate: null, billingDate: null, currency: null, suggestedCurrency: 'USD', renewalCostMinor: null });
+      expect(result.body.drafts[1].warnings).toEqual(['03/04 and the currency symbol are ambiguous. Confirm both.']);
+      expect(result.body.drafts[1].proposals).toEqual([{ field: 'currency', reason: expect.stringMatching(/default, not as an extracted fact/i) }]);
+      expect(result.body.drafts[2]).toMatchObject({ name: null, expirationDate: null, billingDate: null, renewalCostMinor: null, renewalIntent: null });
+      expect(harness.aiCalls[0].user).toContain('Today is 2026-03-04 in America/Chicago');
+      expect(harness.aiCalls[0].system).toContain('For ambiguous dates or currencies, leave those fields null');
+      expect((await listDomains(harness, member)).body.records).toEqual([]);
     } finally {
       await harness.close();
     }
