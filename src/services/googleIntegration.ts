@@ -47,7 +47,11 @@ function loadGis(): Promise<void> {
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Google authorization could not load. Domain Expansion sign-in is unaffected.'));
+    script.onerror = () => {
+      scriptPromise = null;
+      script.remove();
+      reject(new Error('Google authorization could not load. Domain Expansion sign-in is unaffected.'));
+    };
     document.head.appendChild(script);
   });
   return scriptPromise;

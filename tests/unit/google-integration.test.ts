@@ -64,6 +64,38 @@ describe('optional Google integrations', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('shares an in-flight GIS load and retries after a script error', async () => {
+    const scripts: { onload: (() => void) | null; onerror: (() => void) | null; remove: ReturnType<typeof vi.fn> }[] = [];
+    vi.stubEnv('VITE_GOOGLE_OAUTH_CLIENT_ID', 'synthetic-client-id');
+    vi.stubGlobal('window', { google: undefined });
+    vi.stubGlobal('document', {
+      createElement: () => {
+        const script = { src: '', async: false, onload: null, onerror: null, remove: vi.fn() };
+        scripts.push(script);
+        return script;
+      },
+      head: { appendChild: vi.fn() },
+    });
+
+    const first = connectGoogle('calendar');
+    const concurrent = connectGoogle('tasks');
+    expect(scripts).toHaveLength(1);
+    scripts[0].onerror?.();
+    await expect(first).rejects.toThrow('Google authorization could not load');
+    await expect(concurrent).rejects.toThrow('Google authorization could not load');
+    expect(scripts[0].remove).toHaveBeenCalledOnce();
+
+    const retry = connectGoogle('calendar');
+    expect(scripts).toHaveLength(2);
+    vi.stubGlobal('window', {
+      google: { accounts: { oauth2: { initTokenClient: (config: { callback: (response: { access_token: string }) => void }) => ({
+        requestAccessToken: () => config.callback({ access_token: 'retried-token' }),
+      }) } } },
+    });
+    scripts[1].onload?.();
+    await expect(retry).resolves.toBe('retried-token');
+  });
+
   it('plans only enabled reminder offsets before the configured anchor', () => {
     expect(plannedReminderDates(domain.reminders, '2027-06-01')).toEqual([
       { offset: 30, date: '2027-05-02' },
