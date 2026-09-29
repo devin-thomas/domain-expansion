@@ -31,6 +31,8 @@ Contract: SPEC section 13; R01–R13, R15.
 
 ## Verification
 
+2026-09-29 build-boundary follow-up: commit `4753e1b9bc214e9c4dab11bac5992fb500c2a83c` moved the compiled Node server bundle and map outside Vercel's static output. The build guard rejected a synthetic `dist/server.cjs` fixture, and the corrected deployment returned HTML rather than Node/JSON assets for `/server.cjs` and `/server.cjs.map` on both production aliases. Full browser tests passed 19/19, including automated Gemini-key label, proposal-checkbox accessible-name, and Google feedback status assertions. These are automated accessibility checks, not a screen-reader walkthrough or actual browser zoom; the deferred human and Google provider gates remain open.
+
 2026-09-29 live follow-up: the eight-group production verifier passed on application implementation `2c1cdc300e768b2379e524e25a99aa11e1857cd4` served by READY Vercel `dpl_HFiEBsBNzkBF8AsZpVMBvueTpV7d`. It covered owner authentication, canonical health/OpenAPI, anonymous and unapproved isolation, CLI PAT scopes and revocation, payment fields, idempotency and ETags, import preview/commit, and credential-free JSON export. The verifier reported removal of synthetic records and temporary identity and revocation of temporary PATs. Deferred human and Google provider gates remain open.
 
 2026-09-29 follow-up: source `2c1cdc300e768b2379e524e25a99aa11e1857cd4` passes API/CLI 77/77, unit 65/65, browser 18/18, lint, build, boundary, and native runtime. The spreadsheet apostrophe/CSV footer and CLI purchase-detail regressions now have focused coverage; a failed Google script load can be retried in the same session. These checks do not replace the deferred Android, screen-reader, actual browser zoom, or real Google provider acceptance.

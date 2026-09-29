@@ -1,10 +1,10 @@
 # Domain Expansion release
 
 **State:** healthy — Technical release live; human acceptance deferred
-**Updated:** Sep 29, 2026, 1:18 PM America/Chicago
+**Updated:** Sep 29, 2026, 1:32 PM America/Chicago
 **Task ID:** `domain-expansion-release`
 **Repository:** `devin-thomas/domain-expansion`, branch `main`
-**Application commit:** `2c1cdc300e768b2379e524e25a99aa11e1857cd4`
+**Application commit:** `4753e1b9bc214e9c4dab11bac5992fb500c2a83c`
 
 ## Action required
 
@@ -13,15 +13,15 @@ Smallest action: None now. Review the deferred checks at final handoff.
 
 ## Current activity
 
-The technical release and private dashboard are live. The eight-group production verifier passed on the current application implementation; the current checkout also passed Firestore emulator 8/8, API/CLI 77/77, unit 65/65, browser 18/18, lint, build, and hosted macOS CLI.
-Next checkpoint: At final handoff, revisit the explicitly deferred human and Google provider checks. No immediate user action is needed.
+The corrected build is live. The canonical and Vercel production aliases return HTML rather than the former server bundle and source map; all six canonical routes returned HTTP 200. Browser tests pass 19/19.
+Next checkpoint: At final handoff, revisit the explicitly deferred device, accessibility, and Google provider checks. No immediate user action is needed.
 
 ## Milestones
 
-- **complete — Canonical application and API release.** Application implementation 2c1cdc3 is served by READY Vercel dpl_HFiEBsBNzkBF8AsZpVMBvueTpV7d on the canonical alias. All six canonical routes returned HTTP 200. Cloudflare Worker f8e55e50-03d0-495f-b9e1-12f5e50feba9 serves the /api proxy.
-- **complete — Backend and production verification.** The eight-group production verifier passed on the current implementation and reported synthetic cleanup. The current checkout passed Firestore emulator 8/8, API/CLI 77/77, unit 65/65, browser 18/18, lint, build, boundary, native runtime, and hosted macOS CLI.
+- **complete — Canonical application and API release.** Application source 4753e1b is served by READY Vercel dpl_2ZWRrTPU8zkeXB2bcsg6yZg9ZcBb on the canonical alias. All six canonical routes returned HTTP 200. The public server bundle/map exposure is repaired: both paths now return HTML on the canonical and Vercel production aliases.
+- **complete — Backend and production verification.** The eight-group production verifier passed on underlying application source 2c1cdc3 and reported synthetic cleanup. Emulator 8/8 passed on e644c23; API/CLI 77/77, unit 65/65, and hosted macOS CLI passed on that application implementation. The build-boundary source 4753e1b passed browser 19/19, lint, build, boundary, and native runtime.
 - **complete — Desktop/CLI and completed device checks.** Windows and hosted macOS CLI acceptance passed. The user reported iPhone 16 Pro Safari sign-in, capture, and edit success, and Galaxy S21 Ultra Chrome sign-in success.
-- **complete — UI accessibility source fixes.** Gemini key labeling, per-proposal Include labels, and live Google result announcements are committed as bc5601e; lint, build, and browser 18/18 pass. The human screen-reader and browser-zoom walkthroughs remain deferred.
+- **complete — UI accessibility source fixes.** Gemini key labeling, per-proposal Include labels, and live Google result announcements are committed as bc5601e; browser regressions for accessible names and feedback status pass in the 19/19 suite. The human screen-reader and browser-zoom walkthroughs remain deferred.
 - **complete — Private release dashboard.** The portable dashboard is tracked in the canonical repository. Its dedicated loopback server and Tailscale Serve endpoint passed matching task-ID and timestamp checks; Chrome rendered the private page.
 - **blocked — Google provider acceptance and publication.** Google consent and Calendar/Tasks/Sheets/Drive actions, OAuth publication or verification, and Search Console/domain ownership evidence are still pending. No Google provider grant or action is claimed.
 
@@ -32,6 +32,7 @@ Next checkpoint: At final handoff, revisit the explicitly deferred human and Goo
 
 ## Watch items
 
+- **Monitoring:** An earlier deployment exposed the compiled server bundle and source map. The current production aliases no longer return those assets; route checks do not establish whether prior copies were downloaded or whether credentials were embedded.
 - **No action needed:** The user explicitly deferred remaining human checks to final handoff; there is no immediate user request.
 - **Monitoring:** Earlier Firebase and Resend messages were observed in spam. Future inbox placement is unverified.
 - **Agent handling:** Three screen-reader source fixes passed automated checks; no live screen-reader walkthrough is claimed.
@@ -62,12 +63,14 @@ Next checkpoint: At final handoff, revisit the explicitly deferred human and Goo
 - 2026-09-29T18:04:05Z: Deployed CLI purchase-detail, spreadsheet round-trip, and Google script-retry fixes as application source 2c1cdc3. Local API/CLI 77/77, unit 65/65, browser 18/18, lint/build, hosted macOS CLI, canonical alias, six routes, and both dashboard endpoints were verified.
 - 2026-09-29T18:10:51Z: The current application implementation passed all eight live backend verifier groups on READY canonical deployment dpl_HFiEBsBNzkBF8AsZpVMBvueTpV7d. The verifier reported synthetic records and identity removed and temporary PATs revoked; all six canonical routes returned HTTP 200.
 - 2026-09-29T18:18:37Z: Ran npm run test:emulator on checkout e644c23: all 8 Firestore emulator tests passed, including direct-client write denial, Admin SDK isolation, concurrent same-user create/rename races, and cross-user name isolation. Human and Google provider gates remain deferred.
+- 2026-09-29T18:24:23Z: Release audit found that the canonical static host serves server.cjs and server.cjs.map. Build-artifact boundary repair and a related public-path audit are in progress; no credential exposure is claimed.
+- 2026-09-29T18:32:17Z: Deployed build-boundary repair 4753e1b as READY dpl_2ZWRrTPU8zkeXB2bcsg6yZg9ZcBb. The canonical and Vercel production aliases now return HTML for former server-artifact paths; six canonical routes returned HTTP 200. Browser accessibility regressions passed 19/19.
 
 ## Walk-away snapshot
 
-Application implementation 2c1cdc3 was served by READY deployment dpl_HFiEBsBNzkBF8AsZpVMBvueTpV7d on the canonical alias. All six routes returned HTTP 200 and the eight-group live backend verifier passed. Current checkout e644c23 passed Firestore emulator 8/8; API/CLI 77/77, unit 65/65, browser 18/18, lint/build, and hosted macOS CLI also passed. Unfinished: Google provider and remaining device/accessibility acceptance are deferred by user instruction. Next safe step: At final handoff, review the deferred checks and decide whether to perform the Google provider actions.
-Touched: Application source commits d20a785, d5c2e72, and 2c1cdc3 are on origin/main. The dashboard folder is tracked; Tailscale Serve points to its dedicated loopback static server. No private host details or secrets are in the repository snapshot. Expected processes: One loopback Python static server and one Tailscale Serve mapping; local runtime metadata records their details. User action: None until final handoff.
+Build-boundary source 4753e1b was served by READY deployment dpl_2ZWRrTPU8zkeXB2bcsg6yZg9ZcBb on the canonical alias. Six routes returned HTTP 200; former public server-artifact paths returned HTML on both production aliases. Underlying application source 2c1cdc3 passed the eight-group live backend verifier, API/CLI 77/77, unit 65/65, and hosted macOS CLI. Emulator 8/8 passed on e644c23; browser 19/19 and lint/build passed on 4753e1b. Unfinished: Google provider and remaining device/accessibility acceptance are deferred by user instruction. Next safe step: At final handoff, review the deferred checks and decide whether to perform the Google provider actions.
+Touched: Build-boundary source 4753e1b is on origin/main. The dashboard folder is tracked; Tailscale Serve points to its dedicated loopback static server. No private host details or secrets are in the repository snapshot. Expected processes: One loopback Python static server and one Tailscale Serve mapping; local runtime metadata records their details. User action: None until final handoff.
 
 ## Delivery
 
-Portable repository snapshot and private Tailscale Serve. Tailscale: Host-side private HTTPS endpoint verified with matching dashboard identity and timestamp; the tailnet URL is shared in chat, not committed. Persistence: Dashboard source and state are tracked on main; this update is committed as a checkpoint. Last verified: 2026-09-29T18:18:37Z; READY canonical Vercel alias, six live routes, eight-group live backend verifier, current-checkout Firestore emulator 8/8, other source checks, and hosted macOS CLI. Limitation: Tailnet access depends on this host staying awake and connected. A second-device dashboard visit has not been independently tested.
+Portable repository snapshot and private Tailscale Serve. Tailscale: Host-side private HTTPS endpoint verified with matching dashboard identity and timestamp; the tailnet URL is shared in chat, not committed. Persistence: Dashboard source and state are tracked on main; this update is committed as a checkpoint. Last verified: 2026-09-29T18:32:17Z; READY canonical Vercel alias, six live routes, public server-artifact paths no longer expose code, browser 19/19 and build/lint on 4753e1b, earlier emulator 8/8 on e644c23, underlying implementation verifier and hosted macOS CLI. Limitation: Tailnet access depends on this host staying awake and connected. A second-device dashboard visit has not been independently tested.
